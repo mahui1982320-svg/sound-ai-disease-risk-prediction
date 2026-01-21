@@ -19,7 +19,7 @@ import {
   User,
 } from "lucide-react";
 import { useState } from "react";
-// import { AlarmDetailModal } from "@/components/AlarmDetailModal";
+import { AlarmDetailModal } from "@/components/AlarmDetailModal";
 
 type ReviewStatus = "pending" | "confirmed" | "falseAlarm";
 
@@ -169,7 +169,17 @@ export default function AlarmsList() {
         </div>
       </div>
 
-      {/* TODO: 实现报警详情模态框 */}
+      {selectedAlarm && (
+        <AlarmDetailModal
+          alarm={selectedAlarm}
+          isOpen={selectedAlarmId !== null}
+          onClose={() => setSelectedAlarmId(null)}
+          onReviewSuccess={() => {
+            // 刷新报警列表
+            setSelectedAlarmId(null);
+          }}
+        />
+      )}
     </DashboardLayout>
   );
 }
