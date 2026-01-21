@@ -1,6 +1,6 @@
-import { eq } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users } from "../drizzle/schema";
+import { InsertUser, users, elderly, InsertElderly, alarmRecords, InsertAlarmRecord, reviewLogs, InsertReviewLog } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -89,4 +89,114 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-// TODO: add feature queries here as your schema grows.
+/**
+ * 老人档案查询函数
+ */
+export async function getElderlyById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(elderly).where(eq(elderly.id, id)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function getAllElderly() {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(elderly).orderBy(elderly.name);
+}
+
+export async function createElderly(data: InsertElderly) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(elderly).values(data);
+  return result;
+}
+
+export async function updateElderly(id: number, data: Partial<InsertElderly>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(elderly).set(data).where(eq(elderly.id, id));
+}
+
+export async function deleteElderly(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(elderly).where(eq(elderly.id, id));
+}
+
+/**
+ * 报警记录查询函数
+ */
+export async function getAlarmRecordById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(alarmRecords).where(eq(alarmRecords.id, id)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function getAlarmRecordsByElderly(elderlyId: number, limit = 50, offset = 0) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db
+    .select()
+    .from(alarmRecords)
+    .where(eq(alarmRecords.elderlyId, elderlyId))
+    .orderBy(desc(alarmRecords.createdAt))
+    .limit(limit)
+    .offset(offset);
+}
+
+export async function getAllAlarmRecords(limit = 50, offset = 0) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db
+    .select()
+    .from(alarmRecords)
+    .orderBy(desc(alarmRecords.createdAt))
+    .limit(limit)
+    .offset(offset);
+}
+
+export async function getAlarmRecordsByStatus(status: string, limit = 50, offset = 0) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db
+    .select()
+    .from(alarmRecords)
+    .where(eq(alarmRecords.reviewStatus, status as any))
+    .orderBy(desc(alarmRecords.createdAt))
+    .limit(limit)
+    .offset(offset);
+}
+
+export async function createAlarmRecord(data: InsertAlarmRecord) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.insert(alarmRecords).values(data);
+  return { success: true };
+}
+
+export async function updateAlarmRecord(id: number, data: Partial<InsertAlarmRecord>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(alarmRecords).set(data).where(eq(alarmRecords.id, id));
+}
+
+/**
+ * 复核日志查询函数
+ */
+export async function createReviewLog(data: InsertReviewLog) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return await db.insert(reviewLogs).values(data);
+}
+
+export async function getReviewLogsByAlarmRecord(alarmRecordId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db
+    .select()
+    .from(reviewLogs)
+    .where(eq(reviewLogs.alarmRecordId, alarmRecordId))
+    .orderBy(desc(reviewLogs.createdAt));
+}
