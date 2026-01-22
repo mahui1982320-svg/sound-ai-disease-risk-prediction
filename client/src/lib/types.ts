@@ -16,6 +16,10 @@ export type Elderly = {
   id: number;
   name: string;
   roomNumber: string;
+  address?: string | null;
+  healthStatus?: string | null;
+  carerName?: string | null;
+  carerPhone?: string | null;
   emergencyContact?: string | null;
   emergencyPhone?: string | null;
   notes?: string | null;

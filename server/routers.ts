@@ -4,10 +4,9 @@ import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure } from "./_core/trpc";
-import { publicProcedure, router } from "./_core/trpc"; // protectedProcedure is now imported above
+import { publicProcedure, router } from "./_core/trpc";
 
 export const appRouter = router({
-    // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
   system: systemRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
@@ -20,9 +19,6 @@ export const appRouter = router({
     }),
   }),
 
-  /**
-   * 老人档案管理 API
-   */
   elderly: router({
     list: protectedProcedure.query(async () => {
       return await db.getAllElderly();
@@ -35,6 +31,10 @@ export const appRouter = router({
         z.object({
           name: z.string(),
           roomNumber: z.string(),
+          address: z.string().optional(),
+          healthStatus: z.string().optional(),
+          carerName: z.string().optional(),
+          carerPhone: z.string().optional(),
           emergencyContact: z.string().optional(),
           emergencyPhone: z.string().optional(),
           notes: z.string().optional(),
@@ -49,6 +49,10 @@ export const appRouter = router({
           id: z.number(),
           name: z.string().optional(),
           roomNumber: z.string().optional(),
+          address: z.string().optional(),
+          healthStatus: z.string().optional(),
+          carerName: z.string().optional(),
+          carerPhone: z.string().optional(),
           emergencyContact: z.string().optional(),
           emergencyPhone: z.string().optional(),
           notes: z.string().optional(),
@@ -59,19 +63,15 @@ export const appRouter = router({
         await db.updateElderly(id, data);
         return { success: true };
       }),
-    delete: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
-      await db.deleteElderly(input.id);
-      return { success: true };
-    }),
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await db.deleteElderly(input.id);
+        return { success: true };
+      }),
   }),
 
-  /**
-   * 报警记录 API
-   */
   alarms: router({
-    /**
-     * 硬件端上传报警数据的公开接口（无需认证）
-     */
     upload: publicProcedure
       .input(
         z.object({
@@ -89,13 +89,9 @@ export const appRouter = router({
           audioUrl: input.audioUrl,
           reviewStatus: "pending",
         });
-        // TODO: 触发实时通知推送
         return { success: true };
       }),
 
-    /**
-     * 查询报警记录（分页）
-     */
     list: protectedProcedure
       .input(
         z.object({
@@ -106,27 +102,21 @@ export const appRouter = router({
         })
       )
       .query(async ({ input }) => {
-        let records;
+        const records = await db.getAllAlarmRecordsWithElderly(input.limit, input.offset);
+        let filtered = records;
         if (input.elderlyId) {
-          records = await db.getAlarmRecordsByElderly(input.elderlyId, input.limit, input.offset);
-        } else if (input.status) {
-          records = await db.getAlarmRecordsByStatus(input.status, input.limit, input.offset);
-        } else {
-          records = await db.getAllAlarmRecords(input.limit, input.offset);
+          filtered = records.filter(r => r.alarm.elderlyId === input.elderlyId);
         }
-        return records;
+        if (input.status) {
+          filtered = filtered.filter(r => r.alarm.reviewStatus === input.status);
+        }
+        return filtered;
       }),
 
-    /**
-     * 查询单个报警记录
-     */
     get: protectedProcedure.input(z.object({ id: z.number() })).query(async ({ input }) => {
       return await db.getAlarmRecordById(input.id);
     }),
 
-    /**
-     * 报警复核（确认危险或误报）
-     */
     review: protectedProcedure
       .input(
         z.object({
@@ -142,7 +132,6 @@ export const appRouter = router({
           reviewedAt: new Date(),
           reviewNotes: input.notes,
         });
-        // 记录复核日志
         await db.createReviewLog({
           alarmRecordId: input.id,
           userId: ctx.user.id,
@@ -151,23 +140,27 @@ export const appRouter = router({
         });
         return { success: true };
       }),
-  }),
 
-  /**
-   * 数据统计 API
-   */
-  stats: router({
-    /**
-     * 获取报警统计数据
-     */
-    summary: protectedProcedure.query(async () => {
-      // TODO: 实现详细的统计查询
+    stats: protectedProcedure.query(async () => {
+      const allRecords = await db.getAllAlarmRecords(1000, 0);
+      const confirmed = allRecords.filter(r => r.reviewStatus === "confirmed").length;
+      const falseAlarms = allRecords.filter(r => r.reviewStatus === "falseAlarm").length;
+      const pending = allRecords.filter(r => r.reviewStatus === "pending").length;
+      
+      const eventTypes = {
+        fall: allRecords.filter(r => r.eventType === "fall").length,
+        scream: allRecords.filter(r => r.eventType === "scream").length,
+        cough: allRecords.filter(r => r.eventType === "cough").length,
+        moan: allRecords.filter(r => r.eventType === "moan").length,
+      };
+
       return {
-        totalAlarms: 0,
-        pendingAlarms: 0,
-        confirmedAlarms: 0,
-        falseAlarmCount: 0,
-        falseAlarmRate: 0,
+        total: allRecords.length,
+        confirmed,
+        falseAlarms,
+        pending,
+        falseAlarmRate: allRecords.length > 0 ? (falseAlarms / allRecords.length * 100).toFixed(2) : 0,
+        eventTypes,
       };
     }),
   }),

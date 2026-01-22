@@ -157,6 +157,24 @@ export async function getAllAlarmRecords(limit = 50, offset = 0) {
     .offset(offset);
 }
 
+export async function getAllAlarmRecordsWithElderly(limit = 50, offset = 0) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  const result = await db
+    .select({
+      alarm: alarmRecords,
+      elderly: elderly,
+    })
+    .from(alarmRecords)
+    .leftJoin(elderly, eq(alarmRecords.elderlyId, elderly.id))
+    .orderBy(desc(alarmRecords.createdAt))
+    .limit(limit)
+    .offset(offset);
+  
+  return result;
+}
+
 export async function getAlarmRecordsByStatus(status: string, limit = 50, offset = 0) {
   const db = await getDb();
   if (!db) return [];
