@@ -1,6 +1,7 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import DashboardLayout from "@/components/DashboardLayout";
 import AlarmsList from "./AlarmsList";
+import { getLoginUrl } from "@/const";
 
 export default function Home() {
   const { loading, isAuthenticated } = useAuth();
@@ -20,10 +21,10 @@ export default function Home() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-gray-50">
         <div className="text-center max-w-md">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">声音智能识别系统</h1>
+          <h1 className="text-4xl font-bold text-gray-900 mb-4">养老院智能报警管理系统</h1>
           <p className="text-lg text-gray-600 mb-8">为居家老人提供24小时安全监护</p>
           <a
-            href="/api/oauth/login"
+            href={getLoginUrl()}
             className="inline-block px-8 py-3 bg-blue-500 text-white font-semibold rounded-lg hover:bg-blue-600 transition-colors"
           >
             登录系统
