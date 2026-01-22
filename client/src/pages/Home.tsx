@@ -20,7 +20,7 @@ export default function Home() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-gray-50">
         <div className="text-center max-w-md">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">养老院智能报警管理系统</h1>
+          <h1 className="text-4xl font-bold text-gray-900 mb-4">声音智能识别系统</h1>
           <p className="text-lg text-gray-600 mb-8">为居家老人提供24小时安全监护</p>
           <a
             href="/api/oauth/login"
