@@ -1,0 +1,70 @@
+{
+  "query": "SELECT id, elderly_id, event_type, createdAt FROM alarm_records ORDER BY createdAt DESC LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3JjwNfashXA8JPE.2b2aaabe1b3d --database fV6io3SCve4AEG4kcuBVZn --execute SELECT id, elderly_id, event_type, createdAt FROM alarm_records ORDER BY createdAt DESC LIMIT 10;",
+  "rows": [
+    {
+      "id": "30013",
+      "elderly_id": "1",
+      "event_type": "fall",
+      "createdAt": "2026-01-22 11:16:12"
+    },
+    {
+      "id": "30014",
+      "elderly_id": "1",
+      "event_type": "fall",
+      "createdAt": "2026-01-22 11:16:12"
+    },
+    {
+      "id": "30012",
+      "elderly_id": "1",
+      "event_type": "fall",
+      "createdAt": "2026-01-22 11:15:37"
+    },
+    {
+      "id": "30011",
+      "elderly_id": "1",
+      "event_type": "fall",
+      "createdAt": "2026-01-22 11:15:37"
+    },
+    {
+      "id": "30006",
+      "elderly_id": "30003",
+      "event_type": "cough",
+      "createdAt": "2026-01-22 11:11:35"
+    },
+    {
+      "id": "30010",
+      "elderly_id": "30005",
+      "event_type": "cough",
+      "createdAt": "2026-01-22 11:11:35"
+    },
+    {
+      "id": "30007",
+      "elderly_id": "30004",
+      "event_type": "scream",
+      "createdAt": "2026-01-22 11:11:35"
+    },
+    {
+      "id": "30009",
+      "elderly_id": "30005",
+      "event_type": "fall",
+      "createdAt": "2026-01-22 11:11:35"
+    },
+    {
+      "id": "30008",
+      "elderly_id": "30004",
+      "event_type": "moan",
+      "createdAt": "2026-01-22 11:11:35"
+    },
+    {
+      "id": "30004",
+      "elderly_id": "30002",
+      "event_type": "moan",
+      "createdAt": "2026-01-22 11:11:34"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\telderly_id\tevent_type\tcreatedAt\n30013\t1\tfall\t2026-01-22 11:16:12\n30014\t1\tfall\t2026-01-22 11:16:12\n30012\t1\tfall\t2026-01-22 11:15:37\n30011\t1\tfall\t2026-01-22 11:15:37\n30006\t30003\tcough\t2026-01-22 11:11:35\n30010\t30005\tcough\t2026-01-22 11:11:35\n30007\t30004\tscream\t2026-01-22 11:11:35\n30009\t30005\tfall\t2026-01-22 11:11:35\n30008\t30004\tmoan\t2026-01-22 11:11:35\n30004\t30002\tmoan\t2026-01-22 11:11:34\n",
+  "stderr": "",
+  "execution_time_ms": 1533
+}

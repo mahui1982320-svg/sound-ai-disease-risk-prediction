@@ -50,3 +50,25 @@
 - [x] 后端 API 整合 YAMNet 模型处理逻辑
 - [x] 创建真实报警音频片段（模拟摸倒、尖叫等）
 - [x] 编写新功能的单元测试（21个测试全部通过）
+
+
+## 问题修复与功能完善
+- [x] 修复老人信息显示为"未知老人"的问题
+- [ ] 完善 YAMNet 模型集成（后端音频分析处理）
+- [ ] 添加真实音频文件支持
+
+## YAMNet 模型集成
+- [x] 后端 API 整合 YAMNet 模型分析逻辑（yamnet.ts）
+- [x] 创建音频文件处理接口
+- [x] 实现模型推理和事件识别
+- [x] 前端上传音频文件功能
+- [x] 树莓派端 Python 实现（raspberry_pi_yamnet.py）
+- [x] 编写 YAMNet 集成完整指南（YAMNET_INTEGRATION_COMPLETE.md）
+
+
+## 硬件部分文档（面向非技术人员）
+- [x] 创建详细的硬件采购清单（HARDWARE_PROCUREMENT_GUIDE.md）
+- [x] 创建组装和调试视频指南（ASSEMBLY_AND_DEBUGGING_VIDEO_GUIDE.md）
+- [x] 创建快速参考卡（QUICK_REFERENCE_CARD.md）
+- [x] 创建常见问题解决指南（TROUBLESHOOTING_FAQ.md）
+- [x] 所有硬件文档完成
