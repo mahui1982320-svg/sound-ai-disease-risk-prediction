@@ -1,0 +1,1 @@
+ALTER TABLE `yamnet_models` MODIFY COLUMN `supported_labels` int NOT NULL DEFAULT 521;

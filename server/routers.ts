@@ -5,6 +5,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure } from "./_core/trpc";
 import { publicProcedure, router } from "./_core/trpc";
+import { yamnetModelsRouter } from "./routers-yamnet-models";
 
 export const appRouter = router({
   system: systemRouter,
@@ -231,6 +232,7 @@ export const appRouter = router({
       };
     }),
   }),
+  yamnetModels: yamnetModelsRouter,
 });
 
 export type AppRouter = typeof appRouter;
