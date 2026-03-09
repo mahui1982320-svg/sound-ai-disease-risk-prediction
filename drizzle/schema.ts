@@ -82,3 +82,31 @@ export const reviewLogs = mysqlTable("review_logs", {
 
 export type ReviewLog = typeof reviewLogs.$inferSelect;
 export type InsertReviewLog = typeof reviewLogs.$inferInsert;
+
+/**
+ * YAMNet推理结果表：存储YAMNet模型的推理详情
+ * 用于分析模型的准确度和性能
+ */
+export const yamnetInferences = mysqlTable("yamnet_inferences", {
+  id: int("id").autoincrement().primaryKey(),
+  alarmRecordId: int("alarm_record_id").notNull(),
+  
+  // 原始YAMNet输出 (JSON格式)
+  topLabels: text("top_labels").notNull(), // [{label, confidence}, ...]
+  rawScores: text("raw_scores").notNull(), // 完整的521个标签分数
+  
+  // 处理结果
+  mappedEventType: mysqlEnum("mapped_event_type", ["fall", "scream", "cough", "moan"]),
+  mappingConfidence: int("mapping_confidence"), // 0-100
+  
+  // 处理元数据
+  audioLength: int("audio_length"), // 毫秒
+  processingTime: int("processing_time"), // 毫秒
+  modelVersion: varchar("model_version", { length: 50 }), // YAMNet版本
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type YAMNetInference = typeof yamnetInferences.$inferSelect;
+export type InsertYAMNetInference = typeof yamnetInferences.$inferInsert;

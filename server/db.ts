@@ -1,6 +1,6 @@
 import { eq, desc } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, elderly, InsertElderly, alarmRecords, InsertAlarmRecord, reviewLogs, InsertReviewLog } from "../drizzle/schema";
+import { InsertUser, users, elderly, InsertElderly, alarmRecords, InsertAlarmRecord, reviewLogs, InsertReviewLog, yamnetInferences, InsertYAMNetInference } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -190,8 +190,9 @@ export async function getAlarmRecordsByStatus(status: string, limit = 50, offset
 export async function createAlarmRecord(data: InsertAlarmRecord) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  await db.insert(alarmRecords).values(data);
-  return { success: true };
+  const result = await db.insert(alarmRecords).values(data);
+  // 返回插入结果
+  return result;
 }
 
 export async function updateAlarmRecord(id: number, data: Partial<InsertAlarmRecord>) {
@@ -217,4 +218,52 @@ export async function getReviewLogsByAlarmRecord(alarmRecordId: number) {
     .from(reviewLogs)
     .where(eq(reviewLogs.alarmRecordId, alarmRecordId))
     .orderBy(desc(reviewLogs.createdAt));
+}
+
+/**
+ * YAMNet推理结果查询函数
+ */
+export async function createYAMNetInference(data: InsertYAMNetInference) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return await db.insert(yamnetInferences).values(data);
+}
+
+export async function getYAMNetInferenceByAlarmId(alarmRecordId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db
+    .select()
+    .from(yamnetInferences)
+    .where(eq(yamnetInferences.alarmRecordId, alarmRecordId))
+    .limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function getYAMNetInferenceStats() {
+  const db = await getDb();
+  if (!db) return null;
+  
+  const records = await db.select().from(yamnetInferences);
+  
+  if (records.length === 0) {
+    return {
+      totalInferences: 0,
+      avgProcessingTime: 0,
+      avgAudioLength: 0,
+      modelVersions: [] as string[],
+    };
+  }
+  
+  const totalProcessingTime = records.reduce((sum, r) => sum + (r.processingTime || 0), 0);
+  const totalAudioLength = records.reduce((sum, r) => sum + (r.audioLength || 0), 0);
+  const modelVersionSet = new Set(records.map(r => r.modelVersion).filter(Boolean));
+  const modelVersions = Array.from(modelVersionSet);
+  
+  return {
+    totalInferences: records.length,
+    avgProcessingTime: Math.round(totalProcessingTime / records.length),
+    avgAudioLength: Math.round(totalAudioLength / records.length),
+    modelVersions,
+  };
 }

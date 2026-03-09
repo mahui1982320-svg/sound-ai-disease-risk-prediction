@@ -92,6 +92,53 @@ export const appRouter = router({
         return { success: true };
       }),
 
+    uploadWithYAMNet: publicProcedure
+      .input(
+        z.object({
+          elderlyId: z.number(),
+          eventType: z.enum(["fall", "scream", "cough", "moan"]),
+          confidenceScore: z.number().int().min(0).max(100),
+          audioUrl: z.string().url(),
+          topLabels: z.array(z.object({
+            label: z.string(),
+            confidence: z.number().min(0).max(1),
+          })),
+          rawScores: z.record(z.string(), z.number()),
+          audioLength: z.number(),
+          processingTime: z.number(),
+          modelVersion: z.string(),
+        })
+      )
+      .mutation(async ({ input }) => {
+        // 创建报警记录
+        const alarmResult = await db.createAlarmRecord({
+          elderlyId: input.elderlyId,
+          eventType: input.eventType,
+          confidenceScore: input.confidenceScore,
+          audioUrl: input.audioUrl,
+          reviewStatus: "pending",
+        });
+
+        // 获取新创建的报警ID (MySQL返回InsertResult类型)
+        const alarmId = (alarmResult as any)?.insertId as number || 1;
+
+        // 存储YAMNet推理详情
+        if (alarmId > 0) {
+          await db.createYAMNetInference({
+            alarmRecordId: alarmId,
+            topLabels: JSON.stringify(input.topLabels),
+            rawScores: JSON.stringify(input.rawScores),
+            mappedEventType: input.eventType,
+            mappingConfidence: input.confidenceScore,
+            audioLength: input.audioLength,
+            processingTime: input.processingTime,
+            modelVersion: input.modelVersion,
+          });
+        }
+
+        return { success: true, alarmId };
+      }),
+
     list: protectedProcedure
       .input(
         z.object({
@@ -115,6 +162,26 @@ export const appRouter = router({
 
     get: protectedProcedure.input(z.object({ id: z.number() })).query(async ({ input }) => {
       return await db.getAlarmRecordById(input.id);
+    }),
+
+    getYAMNetDetails: protectedProcedure
+      .input(z.object({ alarmId: z.number() }))
+      .query(async ({ input }) => {
+        const inference = await db.getYAMNetInferenceByAlarmId(input.alarmId);
+        if (!inference) return null;
+        
+        return {
+          topLabels: JSON.parse(inference.topLabels),
+          mappedEventType: inference.mappedEventType,
+          mappingConfidence: inference.mappingConfidence,
+          processingTime: inference.processingTime,
+          audioLength: inference.audioLength,
+          modelVersion: inference.modelVersion,
+        };
+      }),
+
+    getYAMNetStats: protectedProcedure.query(async () => {
+      return await db.getYAMNetInferenceStats();
     }),
 
     review: protectedProcedure
