@@ -1,13 +1,21 @@
 #!/usr/bin/env python3
 """
-树莓派端 YAMNet 音频事件识别脚本
-用于实时采集音频并识别危险事件（摔倒、尖叫、咳嗽、呻吟等）
+小羊养老声音监控系统 - 树莓派YAMNet推理程序
+
+这个程序在树莓派上运行，用于：
+1. 实时采集麦克风的音频
+2. 使用YAMNet模型分析音频
+3. 识别危险事件（跌倒、尖叫等）
+4. 将结果上传到云端服务器
 
 安装依赖：
-pip3 install numpy tensorflow-lite requests librosa sounddevice
+pip3 install numpy tensorflow-lite requests librosa sounddevice pyaudio pyyaml
 
 使用方法：
 python3 raspberry_pi_yamnet.py
+
+配置文件：
+~/.xiaoyanglaoyao/config/config.yaml
 """
 
 import os
@@ -27,7 +35,21 @@ ELDERLY_ID = int(os.getenv('ELDERLY_ID', '30001'))
 AUDIO_SAMPLE_RATE = 16000  # YAMNet 要求 16kHz
 AUDIO_DURATION = 10  # 每次采集 10 秒
 CONFIDENCE_THRESHOLD = 0.6  # 置信度阈值
-OUTPUT_DIR = Path.home() / 'yamnet_recordings'
+OUTPUT_DIR = Path.home() / 'xiaoyanglaoyao' / 'recordings'
+CONFIG_DIR = Path.home() / 'xiaoyanglaoyao' / 'config'
+MODEL_DIR = Path.home() / 'xiaoyanglaoyao' / 'models'
+
+# 日志配置
+import logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler(Path.home() / 'xiaoyanglaoyao' / 'logs' / 'app.log'),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
 
 # 事件类型映射
 EVENT_TYPE_MAPPING = {
