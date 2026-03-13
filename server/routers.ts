@@ -6,6 +6,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure } from "./_core/trpc";
 import { publicProcedure, router } from "./_core/trpc";
 import { yamnetModelsRouter } from "./routers-yamnet-models";
+import { raspberryPiRouter } from "./routers-raspberry-pi-integration";
 
 export const appRouter = router({
   system: systemRouter,
@@ -121,7 +122,8 @@ export const appRouter = router({
         });
 
         // 获取新创建的报警ID (MySQL返回InsertResult类型)
-        const alarmId = (alarmResult as any)?.insertId as number || 1;
+        const alarmIdValue = (alarmResult as any).insertId as number;
+        const alarmId = alarmIdValue || 1;
 
         // 存储YAMNet推理详情
         if (alarmId > 0) {
@@ -233,6 +235,7 @@ export const appRouter = router({
     }),
   }),
   yamnetModels: yamnetModelsRouter,
+  raspberryPi: raspberryPiRouter,
 });
 
 export type AppRouter = typeof appRouter;
