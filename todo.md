@@ -86,3 +86,5 @@
 
 ## Bug修复
 - [x] 修复树莓派终端运行Python脚本时中文显示为问号的问题（改为英文输出）
+- [x] 恢复raspberry_pi_client.py的中文输出
+- [x] 生成树莓派中文环境一键配置脚本(setup_chinese.sh)

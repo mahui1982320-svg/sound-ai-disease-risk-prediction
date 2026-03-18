@@ -1,21 +1,23 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Raspberry Pi YAMNet Sound Monitoring Client
-============================================
-This program runs on a Raspberry Pi, captures audio using a ReSpeaker 4-Mic Array,
-classifies audio events via the YAMNet model, and automatically uploads danger events
-to the cloud server.
+树莓派 YAMNet 声音监控客户端
+=============================
+本程序运行在树莓派上，使用 ReSpeaker 4-Mic 阵列采集声音，
+通过 YAMNet 模型进行音频事件分类，检测到危险事件时自动上传到云端服务器。
 
-Hardware Requirements:
-  - Raspberry Pi 4B (4GB RAM recommended)
-  - ReSpeaker 4-Mic Array (device ID is usually 8)
-  - Stable network connection
+硬件要求:
+  - 树莓派 4B (推荐 4GB 内存)
+  - ReSpeaker 4-Mic Array (设备ID通常为8)
+  - 稳定的网络连接
 
-Software Dependencies:
+软件依赖:
   pip3 install sounddevice numpy requests tflite-runtime
 
-Usage:
+使用前请先运行中文环境配置脚本:
+  sudo bash setup_chinese.sh
+
+使用方法:
   python3 raspberry_pi_client.py --server-url https://your-server.com --device-id rpi-001 --api-token YOUR_TOKEN
 """
 
@@ -33,47 +35,91 @@ import threading
 import wave
 from datetime import datetime
 
+# ============================================================================
+# 强制设置 UTF-8 编码（解决树莓派终端中文显示问题）
+# ============================================================================
+import locale
+
+def setup_utf8():
+    """确保终端输出使用 UTF-8 编码，解决中文显示为问号的问题"""
+    # 设置环境变量
+    os.environ['PYTHONIOENCODING'] = 'utf-8'
+    os.environ['LANG'] = os.environ.get('LANG', 'en_US.UTF-8')
+
+    # 重新配置 stdout/stderr 为 UTF-8
+    if hasattr(sys.stdout, 'reconfigure'):
+        try:
+            sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+        except Exception:
+            pass
+    if hasattr(sys.stderr, 'reconfigure'):
+        try:
+            sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+        except Exception:
+            pass
+
+    # 如果 stdout 仍然不是 UTF-8，用包装器替换
+    if sys.stdout.encoding and sys.stdout.encoding.lower() not in ('utf-8', 'utf8'):
+        try:
+            sys.stdout = io.TextIOWrapper(
+                sys.stdout.buffer, encoding='utf-8', errors='replace', line_buffering=True
+            )
+        except Exception:
+            pass
+    if sys.stderr.encoding and sys.stderr.encoding.lower() not in ('utf-8', 'utf8'):
+        try:
+            sys.stderr = io.TextIOWrapper(
+                sys.stderr.buffer, encoding='utf-8', errors='replace', line_buffering=True
+            )
+        except Exception:
+            pass
+
+# 在导入其他模块之前就设置好编码
+setup_utf8()
+
 import numpy as np
 import requests
 
 # ============================================================================
-# Configuration
+# 配置
 # ============================================================================
 
-# YAMNet model parameters
-SAMPLE_RATE = 16000          # Sample rate 16kHz
-AUDIO_SAMPLES = 15600        # YAMNet input length (0.975s)
-RECORD_DURATION = 0.975      # Recording duration (seconds)
-RMS_THRESHOLD = 0.03         # RMS volume threshold (filter background noise)
-CHANNELS = 1                 # Mono (take first channel from 32)
+# YAMNet 模型参数
+SAMPLE_RATE = 16000          # 采样率 16kHz
+AUDIO_SAMPLES = 15600        # YAMNet 输入长度 (0.975秒)
+RECORD_DURATION = 0.975      # 录音时长(秒)
+RMS_THRESHOLD = 0.03         # RMS 音量阈值（过滤背景噪音）
+CHANNELS = 1                 # 单声道（从32通道中取第一个）
 
-# Danger class IDs (21 danger events out of YAMNet's 521 classes)
+# 危险事件类别ID (YAMNet 521个类别中的21个危险事件)
 DANGER_CLASS_IDS = {
-    6, 7, 9, 11, 19, 20, 22,        # Screaming / Cry for help
-    33, 39, 42,                       # Coughing / Health
-    300, 301, 310, 315, 316,          # Fall / Impact
-    317, 390, 393, 394, 399,          # Moaning / Distress
-    420,                              # Alarm
+    6, 7, 9, 11, 19, 20, 22,        # 尖叫/呼救类
+    33, 39, 42,                       # 咳嗽/健康类
+    300, 301, 310, 315, 316,          # 摔倒/撞击类
+    317, 390, 393, 394, 399,          # 呻吟/不适类
+    420,                              # 报警类
 }
 
-# Heartbeat interval
-HEARTBEAT_INTERVAL = 60  # seconds
+# 心跳间隔
+HEARTBEAT_INTERVAL = 60  # 秒
 
-# Logging configuration
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s [%(levelname)s] %(message)s',
+# 日志配置 - 强制使用 UTF-8
+log_handler = logging.StreamHandler(sys.stderr)
+log_handler.setFormatter(logging.Formatter(
+    '%(asctime)s [%(levelname)s] %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S'
-)
+))
 logger = logging.getLogger('yamnet_client')
+logger.addHandler(log_handler)
+logger.setLevel(logging.INFO)
 
 
 # ============================================================================
-# YAMNet Model
+# YAMNet 模型加载
 # ============================================================================
 
 class YAMNetModel:
-    """YAMNet TensorFlow Lite model wrapper"""
+    """YAMNet TensorFlow Lite 模型封装"""
 
     def __init__(self, model_path='yamnet.tflite', class_map_path='yamnet_class_map.csv'):
         self.model_path = model_path
@@ -84,54 +130,54 @@ class YAMNetModel:
         self._load_class_map()
 
     def _load_model(self):
-        """Load TFLite model"""
+        """加载 TFLite 模型"""
         try:
             import tflite_runtime.interpreter as tflite
             self.interpreter = tflite.Interpreter(model_path=self.model_path)
-            logger.info(f"YAMNet model loaded: {self.model_path}")
+            logger.info(f"YAMNet 模型已加载: {self.model_path}")
         except ImportError:
             try:
                 import tensorflow as tf
                 self.interpreter = tf.lite.Interpreter(model_path=self.model_path)
-                logger.info(f"YAMNet model loaded (TF): {self.model_path}")
+                logger.info(f"YAMNet 模型已加载 (TF): {self.model_path}")
             except ImportError:
-                logger.error("Please install tflite-runtime or tensorflow")
+                logger.error("请安装 tflite-runtime 或 tensorflow")
                 sys.exit(1)
 
-        # Resize input tensor to [15600]
+        # 调整输入张量大小为 [15600]
         input_details = self.interpreter.get_input_details()
         self.interpreter.resize_tensor_input(input_details[0]['index'], [AUDIO_SAMPLES])
         self.interpreter.allocate_tensors()
 
         self.input_details = self.interpreter.get_input_details()
         self.output_details = self.interpreter.get_output_details()
-        logger.info(f"Input shape: {self.input_details[0]['shape']}")
-        logger.info(f"Output count: {len(self.output_details)}")
+        logger.info(f"输入形状: {self.input_details[0]['shape']}")
+        logger.info(f"输出数量: {len(self.output_details)}")
 
     def _load_class_map(self):
-        """Load class name mapping"""
+        """加载类别映射表"""
         if os.path.exists(self.class_map_path):
-            with open(self.class_map_path, 'r') as f:
+            with open(self.class_map_path, 'r', encoding='utf-8') as f:
                 lines = f.readlines()
-                # Skip header line
+                # 跳过标题行
                 for line in lines[1:]:
                     parts = line.strip().split(',', 2)
                     if len(parts) >= 3:
                         self.class_names.append(parts[2].strip('"'))
-            logger.info(f"Class map loaded: {len(self.class_names)} classes")
+            logger.info(f"类别映射表已加载: {len(self.class_names)} 个类别")
         else:
-            logger.warning(f"Class map not found: {self.class_map_path}")
+            logger.warning(f"类别映射表不存在: {self.class_map_path}")
             self.class_names = [f"Class_{i}" for i in range(521)]
 
     def predict(self, audio_data):
         """
-        Run inference on audio data.
+        对音频数据进行推理
 
-        Args:
-            audio_data: numpy array, shape [15600], float32, range [-1, 1]
+        参数:
+            audio_data: numpy array, 形状 [15600], float32, 范围 [-1, 1]
 
-        Returns:
-            scores: numpy array, shape [521], confidence for each class
+        返回:
+            scores: numpy array, 形状 [521], 每个类别的置信度
         """
         audio_data = audio_data.astype(np.float32)
         if len(audio_data) < AUDIO_SAMPLES:
@@ -146,7 +192,7 @@ class YAMNetModel:
         return scores.flatten()
 
     def get_top_labels(self, scores, top_k=5):
-        """Get top_k labels with highest confidence"""
+        """获取置信度最高的 top_k 个标签"""
         top_indices = np.argsort(scores)[-top_k:][::-1]
         results = []
         for idx in top_indices:
@@ -159,11 +205,11 @@ class YAMNetModel:
 
 
 # ============================================================================
-# Audio Capture
+# 音频采集
 # ============================================================================
 
 class AudioCapture:
-    """Audio capture handler"""
+    """音频采集器"""
 
     def __init__(self, device_id=None, channels=32, sample_rate=SAMPLE_RATE):
         import sounddevice as sd
@@ -174,15 +220,15 @@ class AudioCapture:
 
         if device_id is not None:
             sd.default.device = device_id
-            logger.info(f"Using audio device ID: {device_id}")
+            logger.info(f"使用音频设备 ID: {device_id}")
 
     def record(self, duration=RECORD_DURATION):
         """
-        Record a segment of audio.
+        录制一段音频
 
-        Returns:
-            audio_data: numpy array, shape [samples], normalized to [-1, 1]
-            rms: float, RMS volume level
+        返回:
+            audio_data: numpy array, 形状 [samples], 归一化到 [-1, 1]
+            rms: float, RMS 音量值
         """
         samples = int(duration * self.sample_rate)
         try:
@@ -190,32 +236,32 @@ class AudioCapture:
                                channels=self.channels, dtype='float32')
             self.sd.wait()
 
-            # Take first channel
+            # 取第一个通道
             if audio.shape[1] > 1:
                 audio = audio[:, 0]
             else:
                 audio = audio.flatten()
 
-            # Normalize
+            # 归一化
             max_val = np.max(np.abs(audio))
             if max_val > 0:
                 audio = audio / max_val
 
-            # Calculate RMS
+            # 计算 RMS
             rms = float(np.sqrt(np.mean(audio ** 2)))
 
             return audio, rms
         except Exception as e:
-            logger.error(f"Recording failed: {e}")
+            logger.error(f"录音失败: {e}")
             return np.zeros(samples, dtype=np.float32), 0.0
 
 
 # ============================================================================
-# Server Communication
+# 服务器通信
 # ============================================================================
 
 class ServerClient:
-    """Client for communicating with the cloud server"""
+    """与云端服务器通信的客户端"""
 
     def __init__(self, server_url, device_id, api_token, timeout=10):
         self.server_url = server_url.rstrip('/')
@@ -228,11 +274,11 @@ class ServerClient:
         })
 
     def _trpc_url(self, procedure):
-        """Build tRPC API URL"""
+        """构建 tRPC API URL"""
         return f"{self.server_url}/api/trpc/{procedure}"
 
     def _trpc_mutation(self, procedure, data):
-        """Call tRPC mutation"""
+        """调用 tRPC mutation"""
         url = self._trpc_url(procedure)
         payload = {"json": data}
         try:
@@ -241,20 +287,20 @@ class ServerClient:
                 result = resp.json()
                 return result.get('result', {}).get('data', {}).get('json', result)
             else:
-                logger.error(f"API call failed [{procedure}]: {resp.status_code} {resp.text[:200]}")
+                logger.error(f"API调用失败 [{procedure}]: {resp.status_code} {resp.text[:200]}")
                 return None
         except requests.exceptions.Timeout:
-            logger.error(f"API call timeout [{procedure}]")
+            logger.error(f"API调用超时 [{procedure}]")
             return None
         except requests.exceptions.ConnectionError:
-            logger.error(f"Cannot connect to server [{procedure}]")
+            logger.error(f"无法连接服务器 [{procedure}]")
             return None
         except Exception as e:
-            logger.error(f"API call error [{procedure}]: {e}")
+            logger.error(f"API调用异常 [{procedure}]: {e}")
             return None
 
     def _trpc_query(self, procedure, data):
-        """Call tRPC query"""
+        """调用 tRPC query"""
         url = self._trpc_url(procedure)
         import urllib.parse
         input_json = json.dumps({"json": data})
@@ -265,14 +311,14 @@ class ServerClient:
                 result = resp.json()
                 return result.get('result', {}).get('data', {}).get('json', result)
             else:
-                logger.error(f"API query failed [{procedure}]: {resp.status_code} {resp.text[:200]}")
+                logger.error(f"API查询失败 [{procedure}]: {resp.status_code} {resp.text[:200]}")
                 return None
         except Exception as e:
-            logger.error(f"API query error [{procedure}]: {e}")
+            logger.error(f"API查询异常 [{procedure}]: {e}")
             return None
 
     def heartbeat(self, status=None):
-        """Send heartbeat"""
+        """发送心跳"""
         data = {
             "device_id": self.device_id,
             "api_token": self.api_token,
@@ -285,7 +331,7 @@ class ServerClient:
                      is_danger, top_labels=None, rms_volume=None,
                      processing_time_ms=None, model_version=None,
                      audio_data=None, audio_duration=None):
-        """Upload sound event"""
+        """上传声音事件"""
         data = {
             "device_id": self.device_id,
             "api_token": self.api_token,
@@ -307,18 +353,18 @@ class ServerClient:
         if audio_duration:
             data["audio_duration"] = audio_duration
 
-        # Upload audio data for danger events
+        # 如果是危险事件，上传音频数据
         if is_danger and audio_data is not None:
             try:
                 audio_base64 = self._encode_audio_wav(audio_data)
                 data["audio_base64"] = audio_base64
             except Exception as e:
-                logger.error(f"Audio encoding failed: {e}")
+                logger.error(f"音频编码失败: {e}")
 
         return self._trpc_mutation("raspberryPi.uploadEvent", data)
 
     def get_config(self):
-        """Get device configuration"""
+        """获取设备配置"""
         data = {
             "device_id": self.device_id,
             "api_token": self.api_token,
@@ -326,7 +372,7 @@ class ServerClient:
         return self._trpc_query("raspberryPi.getConfig", data)
 
     def _encode_audio_wav(self, audio_data, sample_rate=SAMPLE_RATE):
-        """Encode audio data to Base64 WAV format"""
+        """将音频数据编码为 Base64 WAV 格式"""
         buf = io.BytesIO()
         with wave.open(buf, 'wb') as wf:
             wf.setnchannels(1)
@@ -338,11 +384,11 @@ class ServerClient:
 
 
 # ============================================================================
-# Monitoring Loop
+# 主监控循环
 # ============================================================================
 
 class MonitoringService:
-    """Sound monitoring service"""
+    """声音监控服务"""
 
     def __init__(self, model, audio_capture, server_client, config=None):
         self.model = model
@@ -351,102 +397,101 @@ class MonitoringService:
         self.running = False
         self.config = config or {}
 
-        # Update thresholds from server config
+        # 从服务器配置更新阈值
         self.rms_threshold = self.config.get('rms_threshold', RMS_THRESHOLD)
         self.danger_threshold = self.config.get('danger_threshold', 0.75)
 
-        # Statistics
+        # 统计
         self.total_detections = 0
         self.danger_detections = 0
         self.start_time = None
 
-        # Heartbeat thread
+        # 心跳线程
         self.heartbeat_thread = None
 
     def start(self):
-        """Start monitoring"""
+        """启动监控"""
         self.running = True
         self.start_time = time.time()
 
-        # Start heartbeat thread
+        # 启动心跳线程
         self.heartbeat_thread = threading.Thread(target=self._heartbeat_loop, daemon=True)
         self.heartbeat_thread.start()
 
         logger.info("=" * 60)
-        logger.info("Sound Monitoring Service STARTED")
-        logger.info(f"  RMS threshold : {self.rms_threshold}")
-        logger.info(f"  Danger thresh : {self.danger_threshold}")
-        logger.info(f"  Sample rate   : {SAMPLE_RATE} Hz")
-        logger.info(f"  Record length : {RECORD_DURATION} s")
+        logger.info("声音监控服务已启动")
+        logger.info(f"  RMS 阈值: {self.rms_threshold}")
+        logger.info(f"  危险阈值: {self.danger_threshold}")
+        logger.info(f"  采样率: {SAMPLE_RATE} Hz")
+        logger.info(f"  录音时长: {RECORD_DURATION} 秒")
         logger.info("=" * 60)
 
         try:
             self._monitoring_loop()
         except KeyboardInterrupt:
-            logger.info("Interrupt received, stopping...")
+            logger.info("收到中断信号，正在停止...")
         finally:
             self.stop()
 
     def stop(self):
-        """Stop monitoring"""
+        """停止监控"""
         self.running = False
         elapsed = time.time() - self.start_time if self.start_time else 0
         logger.info("=" * 60)
-        logger.info("Sound Monitoring Service STOPPED")
-        logger.info(f"  Uptime          : {elapsed:.0f} s")
-        logger.info(f"  Total detections: {self.total_detections}")
-        logger.info(f"  Danger events   : {self.danger_detections}")
+        logger.info("声音监控服务已停止")
+        logger.info(f"  运行时长: {elapsed:.0f} 秒")
+        logger.info(f"  总检测次数: {self.total_detections}")
+        logger.info(f"  危险事件次数: {self.danger_detections}")
         logger.info("=" * 60)
 
     def _monitoring_loop(self):
-        """Main monitoring loop"""
+        """主监控循环"""
         while self.running:
             try:
-                # Record audio
+                # 录音
                 audio_data, rms = self.audio.record(RECORD_DURATION)
 
-                # Volume bar display
+                # 音量条显示
                 bar_len = int(rms * 200)
                 bar = '#' * min(bar_len, 50)
-                rms_str = f"Volume: {rms:.4f} |{bar:<50}|"
+                rms_str = f"音量: {rms:.4f} |{bar:<50}|"
 
-                # Check if above threshold
+                # 检查是否超过阈值
                 if rms < self.rms_threshold:
-                    # Quiet, skip inference
-                    sys.stdout.write(f"\r{rms_str} [Quiet]")
+                    sys.stdout.write(f"\r{rms_str} [安静]")
                     sys.stdout.flush()
                     continue
 
-                # Run YAMNet inference
+                # 进行 YAMNet 推理
                 start_time = time.time()
                 scores = self.model.predict(audio_data)
                 processing_time = int((time.time() - start_time) * 1000)
 
-                # Get Top-5 labels
+                # 获取 Top-5 标签
                 top_labels = self.model.get_top_labels(scores, top_k=5)
                 primary = top_labels[0]
 
-                # Check if danger event
+                # 判断是否为危险事件
                 is_danger = primary['class_id'] in DANGER_CLASS_IDS
                 self.total_detections += 1
 
-                # Display result
-                danger_flag = " *** DANGER! ***" if is_danger else ""
+                # 显示结果
+                danger_flag = " *** 危险! ***" if is_danger else ""
                 print(f"\n{rms_str}")
-                print(f"  Result: {primary['class_name']} "
+                print(f"  识别结果: {primary['class_name']} "
                       f"(ID:{primary['class_id']}, "
-                      f"Conf:{primary['confidence']:.2%}, "
-                      f"Time:{processing_time}ms)"
+                      f"置信度:{primary['confidence']:.2%}, "
+                      f"耗时:{processing_time}ms)"
                       f"{danger_flag}")
 
-                # Print Top-5 labels
+                # 显示 Top-5 标签
                 if is_danger or primary['confidence'] > 0.5:
-                    print(f"  Top-5:")
+                    print(f"  前5结果:")
                     for i, lbl in enumerate(top_labels):
-                        marker = " <--DANGER" if lbl['class_id'] in DANGER_CLASS_IDS else ""
+                        marker = " <--危险" if lbl['class_id'] in DANGER_CLASS_IDS else ""
                         print(f"    {i+1}. {lbl['class_name']:<30} {lbl['confidence']:.2%}{marker}")
 
-                # Upload event to server
+                # 上传事件到服务器
                 if is_danger or primary['confidence'] > 0.5:
                     result = self.server.upload_event(
                         primary_class_id=primary['class_id'],
@@ -466,53 +511,53 @@ class MonitoringService:
                             self.danger_detections += 1
                             alarm_info = ""
                             if result.get('alarm_created'):
-                                alarm_info = f" -> Alarm created (ID: {result.get('alarm_id')})"
-                            print(f"  >>> Danger event uploaded!{alarm_info}")
+                                alarm_info = f" -> 报警已创建 (ID: {result.get('alarm_id')})"
+                            print(f"  >>> 危险事件已上传!{alarm_info}")
                         else:
-                            print(f"  >>> Event uploaded (confidence > 50%)")
+                            print(f"  >>> 事件已上传 (置信度 > 50%)")
                     else:
-                        print(f"  >>> Upload failed, will retry next time")
+                        print(f"  >>> 上传失败，将在下次重试")
+
+                # 上传正常事件...
+                print(f"  正在上传事件...")
 
             except Exception as e:
-                logger.error(f"Monitoring loop error: {e}")
+                logger.error(f"监控循环异常: {e}")
                 time.sleep(1)
 
     def _heartbeat_loop(self):
-        """Heartbeat loop"""
+        """心跳发送循环"""
         while self.running:
             try:
                 status = self._get_system_status()
                 result = self.server.heartbeat(status)
                 if result:
-                    # Check for config updates
                     config = result.get('config', {})
                     if config:
                         new_rms = config.get('rms_threshold')
                         new_danger = config.get('danger_threshold')
                         if new_rms and new_rms != self.rms_threshold:
                             self.rms_threshold = new_rms
-                            logger.info(f"RMS threshold updated: {new_rms}")
+                            logger.info(f"RMS 阈值已更新: {new_rms}")
                         if new_danger and new_danger != self.danger_threshold:
                             self.danger_threshold = new_danger
-                            logger.info(f"Danger threshold updated: {new_danger}")
+                            logger.info(f"危险阈值已更新: {new_danger}")
                 else:
-                    logger.warning("Heartbeat failed")
+                    logger.warning("心跳发送失败")
             except Exception as e:
-                logger.error(f"Heartbeat error: {e}")
+                logger.error(f"心跳异常: {e}")
 
-            # Wait for next heartbeat
             for _ in range(HEARTBEAT_INTERVAL):
                 if not self.running:
                     break
                 time.sleep(1)
 
     def _get_system_status(self):
-        """Get Raspberry Pi system status"""
+        """获取树莓派系统状态"""
         status = {
             "model_version": "yamnet_v1",
         }
 
-        # CPU temperature
         try:
             with open('/sys/class/thermal/thermal_zone0/temp', 'r') as f:
                 temp = int(f.read().strip()) / 1000.0
@@ -520,7 +565,6 @@ class MonitoringService:
         except:
             pass
 
-        # CPU load
         try:
             with open('/proc/loadavg', 'r') as f:
                 load = float(f.read().split()[0])
@@ -528,7 +572,6 @@ class MonitoringService:
         except:
             pass
 
-        # System uptime
         try:
             with open('/proc/uptime', 'r') as f:
                 uptime = float(f.read().split()[0])
@@ -540,22 +583,22 @@ class MonitoringService:
 
 
 # ============================================================================
-# CLI Entry Point
+# 命令行入口
 # ============================================================================
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Raspberry Pi YAMNet Sound Monitoring Client',
+        description='树莓派 YAMNet 声音监控客户端',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
-Examples:
-  # Basic usage
+示例:
+  # 基本使用
   python3 raspberry_pi_client.py \\
     --server-url https://eldersafe-fv6io3sc.manus.space \\
     --device-id rpi-001 \\
     --api-token YOUR_API_TOKEN
 
-  # Specify audio device and model path
+  # 指定音频设备和模型路径
   python3 raspberry_pi_client.py \\
     --server-url https://eldersafe-fv6io3sc.manus.space \\
     --device-id rpi-001 \\
@@ -565,7 +608,7 @@ Examples:
     --model-path ./yamnet.tflite \\
     --class-map ./yamnet_class_map.csv
 
-  # Adjust thresholds
+  # 调整阈值
   python3 raspberry_pi_client.py \\
     --server-url https://eldersafe-fv6io3sc.manus.space \\
     --device-id rpi-001 \\
@@ -575,57 +618,57 @@ Examples:
         """
     )
 
-    # Required arguments
+    # 必选参数
     parser.add_argument('--server-url', required=True,
-                        help='Cloud server URL (e.g. https://eldersafe-fv6io3sc.manus.space)')
+                        help='云端服务器地址 (如 https://eldersafe-fv6io3sc.manus.space)')
     parser.add_argument('--device-id', required=True,
-                        help='Device ID (e.g. rpi-001, must be registered on the web dashboard first)')
+                        help='设备ID (如 rpi-001，需先在网页端注册)')
     parser.add_argument('--api-token', required=True,
-                        help='Device API Token (obtained when registering the device)')
+                        help='设备API Token (注册设备时获取)')
 
-    # Audio parameters
+    # 音频参数
     parser.add_argument('--audio-device', type=int, default=None,
-                        help='Audio device ID (ReSpeaker is usually 8)')
+                        help='音频设备ID (ReSpeaker通常为8)')
     parser.add_argument('--channels', type=int, default=32,
-                        help='Audio channels (ReSpeaker 4-Mic = 32)')
+                        help='音频通道数 (ReSpeaker 4-Mic为32)')
 
-    # Model parameters
+    # 模型参数
     parser.add_argument('--model-path', default='yamnet.tflite',
-                        help='Path to YAMNet model file')
+                        help='YAMNet模型文件路径')
     parser.add_argument('--class-map', default='yamnet_class_map.csv',
-                        help='Path to class map CSV file')
+                        help='类别映射表路径')
 
-    # Threshold parameters
+    # 阈值参数
     parser.add_argument('--rms-threshold', type=float, default=None,
-                        help='RMS volume threshold (default: from server or 0.03)')
+                        help='RMS音量阈值 (默认从服务器获取或0.03)')
     parser.add_argument('--danger-threshold', type=float, default=None,
-                        help='Danger event confidence threshold (default: from server or 0.75)')
+                        help='危险事件置信度阈值 (默认从服务器获取或0.75)')
 
-    # Other
+    # 其他
     parser.add_argument('--test', action='store_true',
-                        help='Test mode: only connect to server, do not start monitoring')
+                        help='测试模式：只连接服务器不启动监控')
     parser.add_argument('--verbose', '-v', action='store_true',
-                        help='Verbose logging output')
+                        help='详细日志输出')
 
     args = parser.parse_args()
 
     if args.verbose:
         logging.getLogger().setLevel(logging.DEBUG)
 
-    # Initialize server client
-    logger.info("Connecting to server...")
+    # 初始化服务器客户端
+    logger.info("正在连接服务器...")
     client = ServerClient(args.server_url, args.device_id, args.api_token)
 
-    # Test connection
-    logger.info("Sending heartbeat test...")
+    # 测试连接
+    logger.info("发送心跳测试...")
     heartbeat_result = client.heartbeat({"model_version": "yamnet_v1"})
     if heartbeat_result:
-        logger.info(f"Server connected! Server time: {heartbeat_result.get('server_time')}")
+        logger.info(f"服务器连接成功! 服务器时间: {heartbeat_result.get('server_time')}")
     else:
-        logger.error("Cannot connect to server. Please check URL and API token.")
+        logger.error("无法连接服务器，请检查地址和Token")
         sys.exit(1)
 
-    # Get server config
+    # 获取服务器配置
     config = {}
     server_config = client.get_config()
     if server_config:
@@ -633,36 +676,36 @@ Examples:
             'rms_threshold': server_config.get('rms_threshold', RMS_THRESHOLD),
             'danger_threshold': server_config.get('danger_threshold', 0.75),
         }
-        logger.info(f"Server config loaded: {config}")
+        logger.info(f"服务器配置已获取: {config}")
 
-    # CLI args override server config
+    # 命令行参数覆盖服务器配置
     if args.rms_threshold is not None:
         config['rms_threshold'] = args.rms_threshold
     if args.danger_threshold is not None:
         config['danger_threshold'] = args.danger_threshold
 
     if args.test:
-        logger.info("Test mode: server connection OK, exiting.")
+        logger.info("测试模式：服务器连接正常，退出")
         return
 
-    # Load YAMNet model
-    logger.info("Loading YAMNet model...")
+    # 加载 YAMNet 模型
+    logger.info("正在加载 YAMNet 模型...")
     model = YAMNetModel(args.model_path, args.class_map)
 
-    # Initialize audio capture
-    logger.info("Initializing audio device...")
+    # 初始化音频采集
+    logger.info("正在初始化音频设备...")
     audio = AudioCapture(
         device_id=args.audio_device,
         channels=args.channels,
         sample_rate=SAMPLE_RATE,
     )
 
-    # Start monitoring service
+    # 启动监控服务
     service = MonitoringService(model, audio, client, config)
 
-    # Register signal handlers
+    # 注册信号处理
     def signal_handler(sig, frame):
-        logger.info("Stop signal received...")
+        logger.info("收到停止信号...")
         service.stop()
         sys.exit(0)
 
