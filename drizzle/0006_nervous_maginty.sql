@@ -1,0 +1,42 @@
+CREATE TABLE `devices` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`device_id` varchar(64) NOT NULL,
+	`device_name` varchar(100) NOT NULL,
+	`device_type` varchar(50) NOT NULL DEFAULT 'raspberry_pi',
+	`elderly_id` int,
+	`api_token` varchar(128) NOT NULL,
+	`confidence_threshold` float NOT NULL DEFAULT 0.5,
+	`danger_threshold` float NOT NULL DEFAULT 0.75,
+	`rms_threshold` float NOT NULL DEFAULT 0.03,
+	`is_online` boolean NOT NULL DEFAULT false,
+	`last_heartbeat` timestamp,
+	`last_event_time` timestamp,
+	`firmware_version` varchar(50),
+	`model_version` varchar(50),
+	`location` varchar(255),
+	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	CONSTRAINT `devices_id` PRIMARY KEY(`id`),
+	CONSTRAINT `devices_device_id_unique` UNIQUE(`device_id`)
+);
+--> statement-breakpoint
+CREATE TABLE `pi_events` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`device_id` varchar(64) NOT NULL,
+	`elderly_id` int,
+	`primary_class_name` varchar(100) NOT NULL,
+	`primary_class_id` int NOT NULL,
+	`primary_confidence` float NOT NULL,
+	`is_danger` boolean NOT NULL DEFAULT false,
+	`danger_level` enum('none','low','medium','high','critical') NOT NULL DEFAULT 'none',
+	`top_labels` text,
+	`audio_url` text,
+	`audio_duration` float,
+	`rms_volume` float,
+	`processing_time_ms` int,
+	`model_version` varchar(50),
+	`alarm_record_id` int,
+	`device_timestamp` timestamp,
+	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	CONSTRAINT `pi_events_id` PRIMARY KEY(`id`)
+);

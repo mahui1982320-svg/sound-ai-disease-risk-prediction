@@ -72,3 +72,14 @@
 - [x] 创建快速参考卡（QUICK_REFERENCE_CARD.md）
 - [x] 创建常见问题解决指南（TROUBLESHOOTING_FAQ.md）
 - [x] 所有硬件文档完成
+
+## 树莓派与云端系统对接集成
+- [x] 扩展数据库schema：新增devices设备管理表和pi_events树莓派事件上传表
+- [x] 扩展事件类型枚举：支持YAMNet的21种危险事件类型
+- [x] 完善raspberryPi路由：实现真正的事件接收和音频上传API
+- [x] 实现设备注册和心跳机制
+- [x] 实现音频文件上传到S3存储
+- [x] 添加设备监控页面到前端
+- [x] 更新树莓派端Python上传脚本
+- [x] 编写集成测试（vitest）
+- [x] 生成完整的树莓派部署脚本

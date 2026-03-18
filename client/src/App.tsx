@@ -8,6 +8,8 @@ import Home from "./pages/Home";
 import AlarmsList from "./pages/AlarmsList";
 import ElderlyManagement from "./pages/ElderlyManagement";
 import Statistics from "./pages/Statistics";
+import DeviceManagement from "./pages/DeviceManagement";
+import EventMonitor from "./pages/EventMonitor";
 
 function Router() {
   return (
@@ -16,6 +18,8 @@ function Router() {
       <Route path="/alarms" component={AlarmsList} />
       <Route path="/elderly" component={ElderlyManagement} />
       <Route path="/statistics" component={Statistics} />
+      <Route path="/devices" component={DeviceManagement} />
+      <Route path="/events" component={EventMonitor} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

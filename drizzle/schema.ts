@@ -114,3 +114,7 @@ export type InsertYAMNetInference = typeof yamnetInferences.$inferInsert;
 // 导入YAMNet模型管理相关表
 export { yamnetModels, yamnetModelComparisons, yamnetModelStats } from "./schema_yamnet_models";
 export type { YAMNetModel, InsertYAMNetModel, YAMNetModelComparison, InsertYAMNetModelComparison, YAMNetModelStats, InsertYAMNetModelStats } from "./schema_yamnet_models";
+
+// 导入设备管理和树莓派事件表
+export { devices, piEvents } from "./schema_devices";
+export type { Device, InsertDevice, PiEvent, InsertPiEvent } from "./schema_devices";
