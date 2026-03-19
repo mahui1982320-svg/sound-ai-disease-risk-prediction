@@ -86,3 +86,9 @@
 
 ## Bug修复
 - [x] 修复树莓派终端运行Python脚本时中文显示为问号的问题（改为英文输出）
+- [x] 修复回滚后raspberryPi路由丢失导致404的问题
+- [x] 修复侧边栏导航路由跳转问题（统一DashboardLayout包装）
+- [x] 修复根路径匹配问题（path="" 改为 path="/"）
+- [ ] 注册树莓派设备，获取API Token
+- [ ] 生成树莓派上报脚本（yamnet_uploader.py）
+- [ ] 端到端联调验证

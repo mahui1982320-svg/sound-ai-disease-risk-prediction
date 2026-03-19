@@ -10,16 +10,37 @@ import ElderlyManagement from "./pages/ElderlyManagement";
 import Statistics from "./pages/Statistics";
 import DeviceManagement from "./pages/DeviceManagement";
 import EventMonitor from "./pages/EventMonitor";
+import DashboardLayout from "./components/DashboardLayout";
 
 function Router() {
   return (
     <Switch>
-      <Route path="" component={Home} />
-      <Route path="/alarms" component={AlarmsList} />
-      <Route path="/elderly" component={ElderlyManagement} />
-      <Route path="/statistics" component={Statistics} />
-      <Route path="/devices" component={DeviceManagement} />
-      <Route path="/events" component={EventMonitor} />
+      <Route path="/" component={Home} />
+      <Route path="/alarms">
+        <DashboardLayout>
+          <AlarmsList />
+        </DashboardLayout>
+      </Route>
+      <Route path="/elderly">
+        <DashboardLayout>
+          <ElderlyManagement />
+        </DashboardLayout>
+      </Route>
+      <Route path="/statistics">
+        <DashboardLayout>
+          <Statistics />
+        </DashboardLayout>
+      </Route>
+      <Route path="/devices">
+        <DashboardLayout>
+          <DeviceManagement />
+        </DashboardLayout>
+      </Route>
+      <Route path="/events">
+        <DashboardLayout>
+          <EventMonitor />
+        </DashboardLayout>
+      </Route>
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

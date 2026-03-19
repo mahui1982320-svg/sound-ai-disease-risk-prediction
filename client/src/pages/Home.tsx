@@ -1,10 +1,17 @@
 import { useAuth } from "@/_core/hooks/useAuth";
-import DashboardLayout from "@/components/DashboardLayout";
-import AlarmsList from "./AlarmsList";
 import { getLoginUrl } from "@/const";
+import { useEffect } from "react";
+import { useLocation } from "wouter";
 
 export default function Home() {
   const { loading, isAuthenticated } = useAuth();
+  const [, setLocation] = useLocation();
+
+  useEffect(() => {
+    if (!loading && isAuthenticated) {
+      setLocation("/alarms");
+    }
+  }, [loading, isAuthenticated, setLocation]);
 
   if (loading) {
     return (
@@ -34,9 +41,5 @@ export default function Home() {
     );
   }
 
-  return (
-    <DashboardLayout>
-      <AlarmsList />
-    </DashboardLayout>
-  );
+  return null;
 }
