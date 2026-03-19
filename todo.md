@@ -92,3 +92,4 @@
 - [x] 注册树莓派设备，获取API Token
 - [x] 生成树莓派上报脚本（yamnet_uploader.py）
 - [x] 端到端联调验证（demo模式通过，真实硬件待测）
+- [x] 修复页面偶发NotFoundError: removeChild DOM错误（ErrorBoundary汉化+3秒自动重载，禁用refetchOnWindowFocus）

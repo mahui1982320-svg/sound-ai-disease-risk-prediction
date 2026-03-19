@@ -12,6 +12,8 @@ interface State {
 }
 
 class ErrorBoundary extends Component<Props, State> {
+  private reloadTimer: ReturnType<typeof setTimeout> | null = null;
+
   constructor(props: Props) {
     super(props);
     this.state = { hasError: false, error: null };
@@ -19,6 +21,18 @@ class ErrorBoundary extends Component<Props, State> {
 
   static getDerivedStateFromError(error: Error): State {
     return { hasError: true, error };
+  }
+
+  componentDidUpdate(_: Props, prevState: State) {
+    if (!prevState.hasError && this.state.hasError) {
+      this.reloadTimer = setTimeout(() => {
+        window.location.reload();
+      }, 3000);
+    }
+  }
+
+  componentWillUnmount() {
+    if (this.reloadTimer) clearTimeout(this.reloadTimer);
   }
 
   render() {
@@ -31,11 +45,12 @@ class ErrorBoundary extends Component<Props, State> {
               className="text-destructive mb-6 flex-shrink-0"
             />
 
-            <h2 className="text-xl mb-4">An unexpected error occurred.</h2>
+            <h2 className="text-xl mb-2">发生意外错误。</h2>
+            <p className="text-sm text-muted-foreground mb-4">页面将在 3 秒后自动重新加载…</p>
 
             <div className="p-4 w-full rounded bg-muted overflow-auto mb-6">
               <pre className="text-sm text-muted-foreground whitespace-break-spaces">
-                {this.state.error?.stack}
+                {this.state.error?.message}
               </pre>
             </div>
 
@@ -48,7 +63,7 @@ class ErrorBoundary extends Component<Props, State> {
               )}
             >
               <RotateCcw size={16} />
-              Reload Page
+              重新加载页面
             </button>
           </div>
         </div>
