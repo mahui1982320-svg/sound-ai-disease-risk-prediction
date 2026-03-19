@@ -89,6 +89,6 @@
 - [x] 修复回滚后raspberryPi路由丢失导致404的问题
 - [x] 修复侧边栏导航路由跳转问题（统一DashboardLayout包装）
 - [x] 修复根路径匹配问题（path="" 改为 path="/"）
-- [ ] 注册树莓派设备，获取API Token
-- [ ] 生成树莓派上报脚本（yamnet_uploader.py）
-- [ ] 端到端联调验证
+- [x] 注册树莓派设备，获取API Token
+- [x] 生成树莓派上报脚本（yamnet_uploader.py）
+- [x] 端到端联调验证（demo模式通过，真实硬件待测）
