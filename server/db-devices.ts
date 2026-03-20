@@ -56,12 +56,12 @@ export async function updateDeviceHeartbeat(deviceId: string) {
 export async function updateDeviceOnlineStatus() {
   const db = await getDb();
   if (!db) return;
-  // 超过5分钟没有心跳的设备标记为离线
-  const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+  // 超过2分钟没有心跳的设备标记为离线
+  const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000);
   await db.update(devices).set({ isOnline: false })
     .where(and(
       eq(devices.isOnline, true),
-      sql`${devices.lastHeartbeat} < ${fiveMinutesAgo}`
+      sql`${devices.lastHeartbeat} < ${twoMinutesAgo}`
     ));
 }
 

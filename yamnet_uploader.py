@@ -659,10 +659,42 @@ def trpc_mutation(server_url: str, procedure: str, input_data: dict) -> dict:
 
 def send_heartbeat(server_url: str, device_id: str, api_token: str,
                    cpu_temp: float | None = None) -> dict | None:
-    """Send a heartbeat and return the server config."""
+    """Send a heartbeat with system status and return the server config."""
     status: dict = {"model_version": MODEL_VERSION}
     if cpu_temp is not None:
         status["cpu_temp"] = cpu_temp
+
+    # CPU 使用率 (1分钟平均负载 / CPU核数 * 100)
+    try:
+        with open("/proc/loadavg", "r") as f:
+            load_1min = float(f.read().split()[0])
+        import os
+        cpu_count = os.cpu_count() or 4
+        status["cpu_usage"] = round(min(load_1min / cpu_count * 100, 100), 1)
+    except Exception:
+        pass
+
+    # 内存使用率
+    try:
+        with open("/proc/meminfo", "r") as f:
+            lines = f.readlines()
+        mem_total = mem_available = 0
+        for line in lines:
+            if line.startswith("MemTotal:"):
+                mem_total = int(line.split()[1])
+            elif line.startswith("MemAvailable:"):
+                mem_available = int(line.split()[1])
+        if mem_total > 0:
+            status["memory_usage"] = round((1 - mem_available / mem_total) * 100, 1)
+    except Exception:
+        pass
+
+    # 系统运行时长 (秒)
+    try:
+        with open("/proc/uptime", "r") as f:
+            status["uptime"] = int(float(f.read().split()[0]))
+    except Exception:
+        pass
 
     try:
         result = trpc_mutation(server_url, "raspberryPi.heartbeat", {

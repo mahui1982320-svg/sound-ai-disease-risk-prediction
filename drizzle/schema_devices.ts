@@ -28,6 +28,15 @@ export const devices = mysqlTable("devices", {
   firmwareVersion: varchar("firmware_version", { length: 50 }),
   modelVersion: varchar("model_version", { length: 50 }),
 
+  // 设备运行状态（心跳上报）
+  cpuTemp: float("cpu_temp"), // CPU 温度 (°C)
+  cpuUsage: float("cpu_usage"), // CPU 使用率 (0-100)
+  memoryUsage: float("memory_usage"), // 内存使用率 (0-100)
+  uptime: int("uptime"), // 运行时长 (秒)
+
+  // 离线告警
+  lastOfflineNotifiedAt: timestamp("last_offline_notified_at"), // 上次离线通知时间
+
   // 位置信息
   location: varchar("location", { length: 255 }), // 安装位置描述
 

@@ -182,6 +182,18 @@ export const raspberryPiRouter = router({
       if (input.status?.model_version) {
         updateData.modelVersion = input.status.model_version;
       }
+      if (input.status?.cpu_temp !== undefined) {
+        updateData.cpuTemp = input.status.cpu_temp;
+      }
+      if (input.status?.cpu_usage !== undefined) {
+        updateData.cpuUsage = input.status.cpu_usage;
+      }
+      if (input.status?.memory_usage !== undefined) {
+        updateData.memoryUsage = input.status.memory_usage;
+      }
+      if (input.status?.uptime !== undefined) {
+        updateData.uptime = input.status.uptime;
+      }
       await dbDevices.updateDevice(input.device_id, updateData as any);
 
       return {

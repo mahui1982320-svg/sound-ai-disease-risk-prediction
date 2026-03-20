@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -208,16 +208,33 @@ const dangerLevelColors: Record<string, string> = {
 export default function EventMonitor() {
   const [deviceFilter, setDeviceFilter] = useState<string>("all");
   const [dangerOnly, setDangerOnly] = useState(false);
+  const [liveMode, setLiveMode] = useState(true);
+  const eventListRef = useRef<HTMLDivElement>(null);
+  const prevEventCountRef = useRef(0);
 
   const { data: devices } = trpc.raspberryPi.listDevices.useQuery();
   const { data: events, isLoading, refetch } = trpc.raspberryPi.listEvents.useQuery({
     deviceId: deviceFilter === "all" ? undefined : deviceFilter,
     dangerOnly,
     limit: 100,
+  }, {
+    refetchInterval: liveMode ? 3000 : false, // 实时模式每 3 秒刷新
   });
   const { data: stats } = trpc.raspberryPi.eventStats.useQuery({
     deviceId: deviceFilter === "all" ? undefined : deviceFilter,
+  }, {
+    refetchInterval: liveMode ? 10000 : false,
   });
+
+  // 新事件到达时滚动到顶部
+  useEffect(() => {
+    if (events && events.length > 0 && liveMode) {
+      if (events.length !== prevEventCountRef.current) {
+        prevEventCountRef.current = events.length;
+        eventListRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+      }
+    }
+  }, [events, liveMode]);
 
   const onlineDevices = useMemo(() => devices?.filter(d => d.isOnline).length || 0, [devices]);
   const totalDevices = devices?.length || 0;
@@ -229,10 +246,25 @@ export default function EventMonitor() {
           <h1 className="text-3xl font-bold text-gray-900">事件监控</h1>
           <p className="text-sm text-gray-600 mt-1">实时查看树莓派上传的声音事件</p>
         </div>
-        <Button variant="outline" onClick={() => refetch()} className="flex items-center gap-2">
-          <RefreshCw size={16} />
-          刷新
-        </Button>
+        <div className="flex items-center gap-3">
+          <Button
+            variant={liveMode ? "default" : "outline"}
+            onClick={() => setLiveMode(!liveMode)}
+            className={`flex items-center gap-2 ${liveMode ? "bg-green-600 hover:bg-green-700" : ""}`}
+          >
+            {liveMode && (
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-white"></span>
+              </span>
+            )}
+            {liveMode ? "实时监控中" : "开启实时"}
+          </Button>
+          <Button variant="outline" onClick={() => refetch()} className="flex items-center gap-2">
+            <RefreshCw size={16} />
+            刷新
+          </Button>
+        </div>
       </div>
 
       {/* 统计卡片 */}
@@ -325,7 +357,7 @@ export default function EventMonitor() {
           <Skeleton className="h-20 w-full" />
         </div>
       ) : events && events.length > 0 ? (
-        <div className="space-y-3">
+        <div ref={eventListRef} className="space-y-3 max-h-[600px] overflow-y-auto pr-1" style={{ scrollBehavior: "smooth" }}>
           {events.map((event) => (
             <Card
               key={event.id}

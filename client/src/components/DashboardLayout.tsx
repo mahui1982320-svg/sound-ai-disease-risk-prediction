@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/sidebar";
 import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
-import { Activity, AlertCircle, BarChart3, Cpu, LayoutDashboard, LogOut, PanelLeft, Users } from "lucide-react";
+import { Activity, AlertCircle, BarChart3, Cpu, HeartPulse, LayoutDashboard, LogOut, PanelLeft, Users } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
@@ -30,6 +30,7 @@ import { Button } from "./ui/button";
 const menuItems = [
   { icon: AlertCircle, label: "报警管理", path: "/alarms" },
   { icon: Activity, label: "事件监控", path: "/events" },
+  { icon: HeartPulse, label: "系统健康", path: "/health" },
   { icon: Cpu, label: "设备管理", path: "/devices" },
   { icon: Users, label: "老人档案", path: "/elderly" },
   { icon: BarChart3, label: "数据统计", path: "/statistics" },

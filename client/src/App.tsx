@@ -10,6 +10,7 @@ import ElderlyManagement from "./pages/ElderlyManagement";
 import Statistics from "./pages/Statistics";
 import DeviceManagement from "./pages/DeviceManagement";
 import EventMonitor from "./pages/EventMonitor";
+import SystemHealth from "./pages/SystemHealth";
 import DashboardLayout from "./components/DashboardLayout";
 
 function Router() {
@@ -39,6 +40,11 @@ function Router() {
       <Route path="/events">
         <DashboardLayout>
           <EventMonitor />
+        </DashboardLayout>
+      </Route>
+      <Route path="/health">
+        <DashboardLayout>
+          <SystemHealth />
         </DashboardLayout>
       </Route>
       <Route path="/404" component={NotFound} />
