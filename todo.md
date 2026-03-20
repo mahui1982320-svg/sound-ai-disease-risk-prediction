@@ -103,3 +103,15 @@
 - [x] 修复 yamnet_uploader.py：移除过时的 sounddevice 依赖检查（现在使用 ALSA arecord）
 - [x] 修复 yamnet_uploader.py：修复 raw_rms 变量作用域问题（demo 模式下未初始化）
 - [x] 更新 record_audio_arecord 函数文档，记录完整的 7 步音频处理流水线
+
+## 树莓派端脚本更新部署
+- [x] 将修复后的 yamnet_uploader.py 上传到可下载位置
+- [x] 生成树莓派端一键更新命令
+- [x] 提供验证步骤确认 DC 偏移修复生效
+
+## 系统状态快照与开机自动恢复保障
+- [x] 检查云端 Web 项目状态
+- [x] 检查树莓派端 yamnet_uploader.py 最终版本
+- [x] 检查 systemd 服务配置
+- [x] 编写完整的系统状态快照文档（SYSTEM_STATE_SNAPSHOT.md）
+- [x] 确保开机后自动恢复正常运行
