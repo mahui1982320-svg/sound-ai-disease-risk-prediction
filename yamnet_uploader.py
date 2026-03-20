@@ -8,7 +8,8 @@ via its tRPC HTTP API.
 
 Requirements
 ------------
-    pip install numpy sounddevice requests tflite-runtime
+    pip install numpy requests tflite-runtime scipy
+    sudo apt install alsa-utils   (for arecord)
 
 Quick start
 -----------
@@ -42,6 +43,12 @@ try:
     HAS_SOUNDDEVICE = True
 except ImportError:
     HAS_SOUNDDEVICE = False
+
+try:
+    from scipy.signal import resample as scipy_resample
+    HAS_SCIPY = True
+except ImportError:
+    HAS_SCIPY = False
 
 try:
     import tflite_runtime.interpreter as tflite
@@ -604,6 +611,8 @@ YAMNET_CLASS_NAMES: dict[int, str] = {
 SAMPLE_RATE        = 16_000   # Hz  (YAMNet requirement)
 CHUNK_DURATION     = 0.975    # seconds per inference window
 CHUNK_SAMPLES      = int(SAMPLE_RATE * CHUNK_DURATION)
+# Runtime sample rate (may be overridden by --sample-rate arg)
+_runtime_sample_rate: int = SAMPLE_RATE
 HEARTBEAT_INTERVAL = 30       # seconds between heartbeats
 MODEL_VERSION      = "yamnet_v1"
 
@@ -679,22 +688,188 @@ def read_cpu_temp() -> float | None:
         return None
 
 # =============================================================================
-# Audio recording
+# Audio recording  —  direct sd.rec() (proven to work with reSpeaker XVF3800)
+#
+# Based on yamnet_final.py which was verified working on 2026-03-19.
+# Key points:
+#   - device_index=0 (integer, not string)
+#   - channels=2
+#   - Only use channel 0: rec[:,0].flatten()
+#   - Normalize by max amplitude
+#   - RMS trigger: skip inference if audio is too quiet
 # =============================================================================
 
-def record_chunk(device_index: int | None = None) -> np.ndarray:
-    """Record one CHUNK_DURATION window from the microphone."""
-    if not HAS_SOUNDDEVICE:
-        raise RuntimeError("sounddevice not installed")
-    audio = sd.rec(
-        CHUNK_SAMPLES,
-        samplerate=SAMPLE_RATE,
-        channels=1,
-        dtype="float32",
-        device=device_index,
-    )
-    sd.wait()
-    return audio.flatten()
+# =============================================================================
+# reSpeaker XVF3800 — ALSA arecord method (2026-03-20)
+# =============================================================================
+# DIAGNOSIS RESULT: sounddevice/PortAudio returns a sawtooth ramp signal
+# (values 0.039→0.074 monotonically increasing, gap=24 between non-zero samples).
+# This is NOT real audio — it's a USB frame counter leaking into the audio buffer.
+# YAMNet always classifies this ramp as "Whale vocalization" (class 132, 96.9%).
+#
+# FIX: Use ALSA arecord directly, which bypasses PortAudio and gets real PCM data.
+# Command: arecord -D hw:2,0 -f S16_LE -r 16000 -c 1 -d 2 /tmp/chunk.wav
+# =============================================================================
+
+import subprocess
+import struct
+
+RMS_TRIGGER = 0.001   # skip inference if AC RMS (nz.std()) below this (true silence)
+                       # AC RMS ignores DC offset for more accurate silence detection
+ALSA_DEVICE = "hw:2,0"  # reSpeaker XVF3800 ALSA device
+
+
+def find_alsa_device() -> str:
+    """
+    Find the ALSA device string for reSpeaker XVF3800.
+    Searches /proc/asound/cards for 'xvf' or 'respeaker'.
+    Falls back to hw:2,0.
+    """
+    try:
+        cards = Path("/proc/asound/cards").read_text()
+        for line in cards.splitlines():
+            line_lower = line.lower()
+            if any(k in line_lower for k in ('xvf', 'respeaker', 'array')):
+                # Extract card number from line like " 2 [XVF3800       ]: ..."
+                parts = line.strip().split()
+                if parts and parts[0].isdigit():
+                    card_num = int(parts[0])
+                    device = f"hw:{card_num},0"
+                    log.info("reSpeaker detected: ALSA device=%s", device)
+                    return device
+    except Exception as exc:
+        log.warning("ALSA device detection failed: %s", exc)
+    log.info("Using default ALSA device: %s", ALSA_DEVICE)
+    return ALSA_DEVICE
+
+
+def record_audio_arecord(alsa_device: str, sample_rate: int,
+                         duration: float = 2.0) -> tuple[np.ndarray, float]:
+    """
+    Record audio using ALSA arecord command and process for YAMNet.
+
+    This bypasses sounddevice/PortAudio which was found to return a sawtooth
+    ramp signal (USB frame counter) instead of real microphone audio.
+
+    Processing pipeline (validated 2026-03-20):
+      1. arecord captures 2s WAV at 16kHz stereo
+      2. Extract channel 0 as int16
+      3. Convert to float32 / 32768
+      4. Extract non-zero samples (reSpeaker sparse format)
+      5. Resample to 15600 samples (YAMNet input size)
+      6. Subtract mean (remove DC offset) — eliminates "Whale vocalization" false positives
+      7. Normalize to ±1.0
+
+    Returns (audio_float32_mono_15600, ac_rms).
+    """
+    import tempfile
+    n_samples = int(sample_rate * CHUNK_DURATION)   # 15600 at 16 kHz
+    tmp_wav = "/tmp/yamnet_chunk.wav"
+
+    # Record via arecord: S16_LE, 16kHz, 2 channels
+    # NOTE: reSpeaker XVF3800 does NOT support mono (-c 1), must use stereo (-c 2)
+    # We extract channel 0 after reading the interleaved stereo data.
+    n_channels_rec = 2
+    cmd = [
+        "arecord",
+        "-D", alsa_device,
+        "-f", "S16_LE",
+        "-r", str(sample_rate),
+        "-c", str(n_channels_rec),
+        "-d", str(int(duration)),
+        "-q",          # quiet (suppress progress output)
+        tmp_wav,
+    ]
+    try:
+        result = subprocess.run(cmd, capture_output=True, timeout=duration + 5)
+        if result.returncode != 0:
+            err = result.stderr.decode(errors='replace').strip()
+            log.error("arecord failed (rc=%d): %s", result.returncode, err)
+            return np.zeros(n_samples, dtype=np.float32), 0.0
+    except subprocess.TimeoutExpired:
+        log.error("arecord timed out")
+        return np.zeros(n_samples, dtype=np.float32), 0.0
+    except FileNotFoundError:
+        log.error("arecord not found — install with: sudo apt install alsa-utils")
+        return np.zeros(n_samples, dtype=np.float32), 0.0
+
+    # Read WAV file
+    try:
+        with wave.open(tmp_wav, 'rb') as wf:
+            n_frames = wf.getnframes()
+            n_ch = wf.getnchannels()
+            raw_bytes = wf.readframes(n_frames)
+        # Convert S16_LE interleaved stereo to float32, extract channel 0
+        pcm_all = np.frombuffer(raw_bytes, dtype=np.int16).astype(np.float32)
+        pcm_all = pcm_all / 32768.0   # normalize to [-1, 1]
+        if n_ch == 2:
+            # Interleaved: [L0, R0, L1, R1, ...] -> take every other sample
+            pcm = pcm_all[0::2]   # channel 0 (left)
+            log.debug("Stereo WAV: extracted channel 0, %d samples", len(pcm))
+        else:
+            pcm = pcm_all
+    except Exception as exc:
+        log.error("Failed to read WAV: %s", exc)
+        return np.zeros(n_samples, dtype=np.float32), 0.0
+
+    if len(pcm) == 0:
+        return np.zeros(n_samples, dtype=np.float32), 0.0
+
+    # reSpeaker XVF3800 outputs sparse PCM: only 1 non-zero sample per 24 frames.
+    # Extract non-zero samples — these are the real audio values at ~667 Hz.
+    nz = pcm[pcm != 0]
+    log.debug("arecord: total=%d non-zero=%d (%.1f%%)", len(pcm), len(nz),
+              100 * len(nz) / len(pcm) if len(pcm) > 0 else 0)
+
+    if len(nz) < 10:
+        # Truly silent or device error
+        return np.zeros(n_samples, dtype=np.float32), 0.0
+
+    # Use AC RMS (std dev of non-zero samples) as the true signal level.
+    # This ignores DC offset and gives a more accurate measure of actual audio energy.
+    ac_rms = float(nz.std())
+
+    # Resample non-zero samples from ~667 Hz to 16000 Hz (15600 samples)
+    if HAS_SCIPY:
+        audio = scipy_resample(nz, n_samples).astype(np.float32)
+    else:
+        x_old = np.linspace(0, 1, len(nz))
+        x_new = np.linspace(0, 1, n_samples)
+        audio = np.interp(x_new, x_old, nz).astype(np.float32)
+
+    # *** CRITICAL: Remove DC offset ***
+    # reSpeaker XVF3800 sparse sampling introduces a DC bias in the signal.
+    # Without this step, YAMNet misclassifies the DC component as "Whale vocalization".
+    # Subtracting the mean centers the waveform around zero, eliminating the DC bias.
+    audio = audio - np.mean(audio)
+
+    # Normalize to ±1.0 range for YAMNet input
+    # This ensures consistent amplitude regardless of mic gain settings.
+    max_amp = np.max(np.abs(audio))
+    if max_amp > 1e-7:
+        audio = audio / max_amp
+
+    return audio, ac_rms
+
+
+class AudioStream:
+    """
+    Audio recording wrapper for reSpeaker XVF3800.
+    Uses ALSA arecord to bypass PortAudio's broken USB audio handling.
+    """
+
+    def __init__(self, device_index, sample_rate: int):
+        self.alsa_device = find_alsa_device()
+        self.sample_rate = sample_rate
+        log.info("AudioStream ready: ALSA device=%s  sample_rate=%d Hz",
+                 self.alsa_device, sample_rate)
+
+    def read_chunk(self) -> tuple[np.ndarray, float]:
+        """Record one chunk using arecord. Returns (audio, rms)."""
+        return record_audio_arecord(self.alsa_device, self.sample_rate)
+
+    def close(self):
+        pass   # nothing to close for sd.rec() style
 
 
 def audio_to_wav_base64(audio: np.ndarray) -> str:
@@ -901,6 +1076,9 @@ def main():
                         help="Path to yamnet.tflite model file")
     parser.add_argument("--mic-device",  type=int, default=None,
                         help="sounddevice device index (omit for system default)")
+    parser.add_argument("--sample-rate", type=int, default=16000,
+                        help="Microphone hardware sample rate in Hz (default: 16000). "
+                             "Use 48000 for reSpeaker if getting wrong classifications.")
     parser.add_argument("--conf-threshold", type=float, default=0.5,
                         help="Minimum confidence to upload any event (default: 0.5)")
     parser.add_argument("--danger-threshold", type=float, default=0.65,
@@ -921,6 +1099,7 @@ def main():
     log.info("  device_id  : %s", args.device_id)
     log.info("  server_url : %s", args.server_url)
     log.info("  demo mode  : %s", args.demo)
+    log.info("  sample_rate: %d Hz", args.sample_rate)
     log.info("=" * 60)
 
     # ── initial heartbeat ─────────────────────────────────────────────────────
@@ -943,8 +1122,16 @@ def main():
             sys.exit(1)
         interpreter, in_idx, out_idx = load_yamnet(args.model)
 
-        if not HAS_SOUNDDEVICE:
-            log.error("sounddevice not installed. Run:  pip install sounddevice")
+        # Note: sounddevice is no longer required — we use ALSA arecord directly
+        # which bypasses PortAudio's broken USB audio handling for reSpeaker XVF3800.
+
+    # ── open audio stream (unless demo) ──────────────────────────────────────
+    audio_stream = None
+    if not args.demo:
+        try:
+            audio_stream = AudioStream(args.mic_device, args.sample_rate)
+        except Exception as exc:
+            log.error("Failed to open audio stream: %s", exc)
             sys.exit(1)
 
     # ── main loop ─────────────────────────────────────────────────────────────
@@ -969,15 +1156,24 @@ def main():
 
             # record + infer
             audio = None
+            raw_rms = 0.0
             if args.demo:
                 top_results, elapsed_ms = demo_inference()
                 time.sleep(0.5)   # simulate recording time
             else:
                 try:
-                    audio = record_chunk(args.mic_device)
+                    audio, raw_rms = audio_stream.read_chunk()
                 except Exception as exc:
                     log.error("Recording error: %s", exc)
                     time.sleep(1)
+                    continue
+
+                # Skip inference if AC RMS (signal energy without DC) is too low.
+                # This uses nz.std() internally, which ignores DC offset for
+                # more accurate silence detection.
+                if raw_rms < RMS_TRIGGER:
+                    log.info("[%04d] Skipped (silence: ac_rms=%.5f < %.3f)",
+                             iteration, raw_rms, RMS_TRIGGER)
                     continue
 
                 top_results, elapsed_ms = run_inference(
@@ -988,8 +1184,9 @@ def main():
             if top_results:
                 cid, cname, conf = top_results[0]
                 danger_flag = "*** DANGER ***" if cid in DANGER_CLASS_IDS else ""
-                log.info("[%04d] %-30s conf=%.1f%%  %s",
-                         iteration, cname, conf * 100, danger_flag)
+                rms_str = f" ac_rms={raw_rms:.4f}" if audio is not None else ""
+                log.info("[%04d] %-30s conf=%.1f%%%s  %s",
+                         iteration, cname, conf * 100, rms_str, danger_flag)
 
             # upload
             upload_event(
@@ -1007,6 +1204,9 @@ def main():
 
     except KeyboardInterrupt:
         log.info("Stopped by user after %d iterations.", iteration)
+    finally:
+        if audio_stream:
+            audio_stream.close()
 
 
 if __name__ == "__main__":

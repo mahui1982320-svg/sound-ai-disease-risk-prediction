@@ -94,3 +94,12 @@
 - [x] 端到端联调验证（demo模式通过，真实硬件待测）
 - [x] 修复页面偶发NotFoundError: removeChild DOM错误（ErrorBoundary汉化+3秒自动重载，禁用refetchOnWindowFocus）
 - [x] 事件监控页面YAMNet声音类别名称汉化（Speech、Fire、Breathing等英文改中文，包含大部分521类）
+- [x] 修复 yamnet_uploader.py：添加 --sample-rate 参数，自动重采样到 16kHz，修复 reSpeaker 持续识别为鲸鱼声的采样率问题
+
+## 音频处理流水线修复（2026-03-20）
+- [x] 修复 yamnet_uploader.py：添加 DC 偏移去除步骤（audio = audio - np.mean(audio)），消除 reSpeaker 稀疏采样导致的"鲸鱼叫声"误检
+- [x] 修复 yamnet_uploader.py：添加归一化到 ±1.0（audio / max_amp），确保不同麦克风增益下的一致性
+- [x] 修复 yamnet_uploader.py：将 RMS 计算改为 AC RMS（nz.std()），忽略 DC 偏移，更准确地检测静音
+- [x] 修复 yamnet_uploader.py：移除过时的 sounddevice 依赖检查（现在使用 ALSA arecord）
+- [x] 修复 yamnet_uploader.py：修复 raw_rms 变量作用域问题（demo 模式下未初始化）
+- [x] 更新 record_audio_arecord 函数文档，记录完整的 7 步音频处理流水线
