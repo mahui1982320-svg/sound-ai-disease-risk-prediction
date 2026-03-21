@@ -875,10 +875,14 @@ def record_audio_arecord(alsa_device: str, sample_rate: int,
     # Subtracting the mean centers the waveform around zero, eliminating the DC bias.
     audio = audio - np.mean(audio)
 
-    # Normalize to ±1.0 range for YAMNet input
-    # This ensures consistent amplitude regardless of mic gain settings.
+    # Conditional normalization for YAMNet input
+    # IMPORTANT: Only normalize when the signal is strong enough (max_amp > 0.1).
+    # When the signal is very weak (silence/background noise), normalizing would
+    # amplify the noise ~80x to ±1.0, causing YAMNet to misclassify it as
+    # "Whale vocalization". Keeping weak signals at their original amplitude
+    # lets YAMNet correctly identify them as Silence.
     max_amp = np.max(np.abs(audio))
-    if max_amp > 1e-7:
+    if max_amp > 0.1:
         audio = audio / max_amp
 
     return audio, ac_rms
