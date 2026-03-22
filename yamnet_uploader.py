@@ -762,6 +762,55 @@ RMS_TRIGGER = 0.02    # skip inference if AC RMS (nz.std()) below this
 ALSA_DEVICE = "hw:2,0"  # reSpeaker XVF3800 ALSA device
 
 
+def usb_reset_respeaker() -> bool:
+    """
+    Soft-reset the reSpeaker XVF3800 USB device using /sys/bus/usb/devices.
+    This simulates a physical unplug+replug, which is required after reboot
+    to activate the XVF3800 DSP firmware and get real microphone audio.
+
+    Root cause (verified 2026-03-22):
+    After reboot, reSpeaker outputs a fixed noise floor (RMS≈0.0135) that does
+    not respond to real audio. A USB reset forces firmware re-initialization.
+
+    Requires: script must be run as root, or pi user must have write access to
+    /sys/bus/usb/devices/*/authorized (add udev rule if needed).
+    Returns True if reset succeeded, False otherwise.
+    """
+    RESPEAKER_VENDOR = "2886"
+    RESPEAKER_PRODUCT = "001a"
+    try:
+        # Find the USB device path via sysfs
+        usb_devices_path = Path("/sys/bus/usb/devices")
+        for dev_path in usb_devices_path.iterdir():
+            id_vendor_file = dev_path / "idVendor"
+            id_product_file = dev_path / "idProduct"
+            authorized_file = dev_path / "authorized"
+            if not (id_vendor_file.exists() and id_product_file.exists()):
+                continue
+            vendor = id_vendor_file.read_text().strip()
+            product = id_product_file.read_text().strip()
+            if vendor == RESPEAKER_VENDOR and product == RESPEAKER_PRODUCT:
+                log.info("[USB RESET] Found reSpeaker at %s (vendor=%s product=%s)",
+                         dev_path.name, vendor, product)
+                if authorized_file.exists():
+                    # Deauthorize (disconnect)
+                    authorized_file.write_text("0")
+                    time.sleep(1)
+                    # Reauthorize (reconnect)
+                    authorized_file.write_text("1")
+                    time.sleep(3)  # Wait for firmware to reinitialize
+                    log.info("[USB RESET] reSpeaker USB reset complete, waiting 3s for firmware init")
+                    return True
+                else:
+                    log.warning("[USB RESET] authorized file not found at %s", authorized_file)
+        log.warning("[USB RESET] reSpeaker device not found in /sys/bus/usb/devices")
+    except PermissionError:
+        log.warning("[USB RESET] Permission denied — add 'pi ALL=(ALL) NOPASSWD: /bin/bash' or run as root")
+    except Exception as exc:
+        log.warning("[USB RESET] USB reset failed: %s", exc)
+    return False
+
+
 def find_alsa_device() -> str:
     """
     Find the ALSA device string for reSpeaker XVF3800.
@@ -923,10 +972,22 @@ class AudioStream:
     """
 
     def __init__(self, device_index, sample_rate: int):
+        # Step 1: USB soft-reset to activate XVF3800 firmware after reboot
+        # Without this, reSpeaker outputs fixed noise floor (RMS≈0.0135) that
+        # does not respond to real audio. Verified 2026-03-22.
+        log.info("[USB RESET] Attempting USB soft-reset of reSpeaker XVF3800...")
+        reset_ok = usb_reset_respeaker()
+        if reset_ok:
+            log.info("[USB RESET] USB reset succeeded, waiting 3s for ALSA to re-enumerate...")
+            time.sleep(3)
+        else:
+            log.warning("[USB RESET] USB reset failed or skipped, proceeding anyway")
+        # Step 2: Detect ALSA device (card number may change after reboot)
         self.alsa_device = find_alsa_device()
         self.sample_rate = sample_rate
         log.info("AudioStream ready: ALSA device=%s  sample_rate=%d Hz",
                  self.alsa_device, sample_rate)
+        # Step 3: Wait for mic to produce real audio (not just fixed noise floor)
         self._wait_for_mic_ready()
 
     def _wait_for_mic_ready(self, max_attempts: int = 30, stable_threshold: float = 0.001):
