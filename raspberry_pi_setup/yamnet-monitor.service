@@ -13,9 +13,23 @@ Type=simple
 User=pi
 WorkingDirectory=/home/pi
 
-# MD5 自检：开机时校验脚本完整性，防止被意外覆盖回旧版本
+# 第1步：等待 reSpeaker USB 音频设备就绪（最多等30秒）
+# USB 设备枚举在开机时可能需要几秒钟
 ExecStartPre=/bin/bash -c '\
-  EXPECTED="160e79ec7d015665ab8406d431082a0c"; \
+  for i in $(seq 1 15); do \
+    if arecord -l 2>/dev/null | grep -qi "xvf\|respeaker\|array"; then \
+      echo "[OK] reSpeaker USB audio device detected (attempt $i)"; \
+      exit 0; \
+    fi; \
+    echo "[WAIT] reSpeaker not yet detected, retrying ($i/15)..."; \
+    sleep 2; \
+  done; \
+  echo "[WARN] reSpeaker not detected after 30s, starting anyway..."; \
+  exit 0'
+
+# 第2步：MD5 自检（仅告警，不阻止启动）
+ExecStartPre=/bin/bash -c '\
+  EXPECTED="be529edfc22f81e3f91d1228fca54357"; \
   ACTUAL=$(md5sum /home/pi/yamnet_uploader.py | cut -d" " -f1); \
   if [ "$ACTUAL" != "$EXPECTED" ]; then \
     echo "[ALERT] yamnet_uploader.py MD5 mismatch! Expected: $EXPECTED, Got: $ACTUAL"; \
@@ -24,13 +38,12 @@ ExecStartPre=/bin/bash -c '\
     echo "[OK] yamnet_uploader.py MD5 verified: $ACTUAL"; \
   fi'
 
-# 主程序命令
+# 主程序命令（不再指定 --mic-device，由脚本自动检测 reSpeaker 设备号）
 ExecStart=/home/pi/yamnet_venv/bin/python3 /home/pi/yamnet_uploader.py \
     --device-id rpi-001 \
     --api-token 116b9075617e5a0f5a2591ca967d93e68ba321063e5d03d1773a3fd53202d470 \
     --server-url https://eldersafe-fv6io3sc.manus.space \
-    --model /home/pi/yamnet.tflite \
-    --mic-device 3
+    --model /home/pi/yamnet.tflite
 
 # 异常退出后 10 秒自动重启
 Restart=on-failure

@@ -70,6 +70,15 @@ DANGER_CLASS_IDS: set[int] = {
     300, 301, 310, 315, 316, 317, 390, 393, 394, 399, 420,
 }
 
+# Class IDs that are impossible in a home environment.
+# If these appear as top-1, it almost certainly indicates an audio processing
+# artifact (DC offset, normalization of noise, etc.).
+# When a blacklisted class is top-1, we skip it and promote the next result.
+HOME_BLACKLIST_CLASS_IDS: set[int] = {
+    132,  # Whale vocalization — the most common false positive from noise amplification
+    133,  # Music (generic) — often appears alongside Whale vocalization artifacts
+}
+
 CLASS_TO_EVENT_TYPE: dict[int, str] = {
     6: "scream", 7: "scream", 9: "scream", 11: "scream",
     19: "scream", 20: "scream", 22: "scream",
@@ -755,11 +764,14 @@ def find_alsa_device() -> str:
     """
     Find the ALSA device string for reSpeaker XVF3800.
     Searches /proc/asound/cards for 'xvf' or 'respeaker'.
-    Falls back to hw:2,0.
+    USB device card numbers can change between reboots, so we always
+    detect dynamically instead of using a hardcoded number.
+    Falls back to hw:2,0 only if detection fails entirely.
     """
     try:
-        cards = Path("/proc/asound/cards").read_text()
-        for line in cards.splitlines():
+        cards_text = Path("/proc/asound/cards").read_text()
+        log.info("ALSA cards detected:\n%s", cards_text.strip())
+        for line in cards_text.splitlines():
             line_lower = line.lower()
             if any(k in line_lower for k in ('xvf', 'respeaker', 'array')):
                 # Extract card number from line like " 2 [XVF3800       ]: ..."
@@ -767,11 +779,25 @@ def find_alsa_device() -> str:
                 if parts and parts[0].isdigit():
                     card_num = int(parts[0])
                     device = f"hw:{card_num},0"
-                    log.info("reSpeaker detected: ALSA device=%s", device)
+                    log.info("reSpeaker detected: ALSA device=%s (card %d)", device, card_num)
+                    return device
+        log.warning("reSpeaker not found in /proc/asound/cards, trying arecord -l...")
+        # Fallback: parse arecord -l output
+        result = subprocess.run(["arecord", "-l"], capture_output=True, text=True, timeout=5)
+        for line in result.stdout.splitlines():
+            line_lower = line.lower()
+            if any(k in line_lower for k in ('xvf', 'respeaker', 'array')):
+                # Line like: "card 1: Array [reSpeaker XVF3800 4-Mic Array], device 0: USB Audio [USB Audio]"
+                import re
+                m = re.search(r'card\s+(\d+)', line)
+                if m:
+                    card_num = int(m.group(1))
+                    device = f"hw:{card_num},0"
+                    log.info("reSpeaker detected via arecord -l: ALSA device=%s", device)
                     return device
     except Exception as exc:
         log.warning("ALSA device detection failed: %s", exc)
-    log.info("Using default ALSA device: %s", ALSA_DEVICE)
+    log.warning("Using fallback ALSA device: %s — this may be wrong after reboot!", ALSA_DEVICE)
     return ALSA_DEVICE
 
 
@@ -970,13 +996,29 @@ def run_inference(interpreter, in_idx: int, out_idx: int,
     scores = np.squeeze(scores)
     elapsed_ms = (time.perf_counter() - t0) * 1000
 
-    top_indices = np.argsort(scores)[::-1][:10]
+    top_indices = np.argsort(scores)[::-1][:20]  # get top-20 to have room after filtering
     results = []
     for idx in top_indices:
         cid   = int(idx)
         cname = YAMNET_CLASS_NAMES.get(cid, f"class_{cid}")
         conf  = float(scores[cid])
         results.append((cid, cname, conf))
+
+    # ── Home environment blacklist filter ──
+    # Remove classes that are physically impossible in a home (e.g. Whale vocalization).
+    # These are almost always artifacts from audio processing issues.
+    blacklisted = [(cid, cname, conf) for cid, cname, conf in results
+                   if cid in HOME_BLACKLIST_CLASS_IDS]
+    if blacklisted:
+        original_top = results[0] if results else None
+        results = [(cid, cname, conf) for cid, cname, conf in results
+                   if cid not in HOME_BLACKLIST_CLASS_IDS]
+        if original_top and original_top[0] in HOME_BLACKLIST_CLASS_IDS:
+            log.warning("Blacklist filter: removed '%s' (conf=%.1f%%) — likely audio artifact",
+                        original_top[1], original_top[2] * 100)
+
+    # Keep only top-10 after filtering
+    results = results[:10]
 
     log.debug("Inference done in %.1f ms  top=%s conf=%.3f",
               elapsed_ms, results[0][1] if results else "?",

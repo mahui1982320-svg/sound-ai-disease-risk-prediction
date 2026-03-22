@@ -126,3 +126,12 @@
 - [x] 诊断 Whale vocalization 91.8% 再次出现的根因：归一化将微弱底噪放大80倍
 - [x] 修复：归一化阈值从 1e-7 改为 0.1，弱信号保持原始幅度
 - [x] 上传修复后脚本到 CDN
+
+## 家庭环境 Whale vocalization 误检修复（2026-03-22）
+- [x] 诊断根因：重启后 USB 设备号变化（hw:2,0→hw:1,0），find_alsa_device() 检测失败，脚本使用错误设备录音
+- [x] 修复 find_alsa_device()：增强设备检测逻辑（/proc/asound/cards + arecord -l 双重检测），添加详细日志
+- [x] 添加 Whale vocalization 黑名单保护：HOME_BLACKLIST_CLASS_IDS 过滤家庭不可能出现的声音类别
+- [x] 更新 systemd service：去掉硬编码 --mic-device 3，添加 USB 设备等待逻辑（最多等30秒）
+- [x] 更新 MD5 校验值：be529edfc22f81e3f91d1228fca54357
+- [x] 上传修复后的文件到 CDN
+- [ ] 用户在树莓派上部署并验证修复效果
