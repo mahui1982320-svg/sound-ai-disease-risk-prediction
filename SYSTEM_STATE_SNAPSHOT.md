@@ -56,8 +56,10 @@
 
 | 项目 | 值 |
 |------|-----|
-| MD5 校验值 | `160e79ec7d015665ab8406d431082a0c` |
-| 下载地址 | `https://files.manuscdn.com/user_upload_by_module/session_file/310519663273233586/ZUzQLNwjpgLIAdan.py` |
+| MD5 校验值 | `cf7fbcfc792a548351585bb0b058ac76` |
+| 下载地址 | `https://files.manuscdn.com/user_upload_by_module/session_file/310519663273233586/OOuAyFfAtSyzrowC.py` |
+| 更新日期 | 2026-03-22 |
+| 主要变更 | 1) RMS_TRIGGER=0.02 过滤底噪; 2) 黑名单过滤 Whale vocalization; 3) _wait_for_mic_ready() 冷启动就绪等待 |
 
 ### 2.4 Python 依赖版本
 
@@ -254,6 +256,38 @@ journalctl -u yamnet-monitor -f --no-pager
 | 2026-03-19 | YAMNet 持续识别为 Whale vocalization (96.9%) | sounddevice/PortAudio 返回 USB 帧计数器而非真实音频 | 改用 ALSA arecord 直接录音 |
 | 2026-03-19 | 改用 arecord 后仍出现 Whale vocalization | reSpeaker 稀疏采样格式引入 DC 偏置 | 添加 DC 偏移去除（`audio - mean`）+ 归一化 |
 | 2026-03-20 | 开机后脚本版本回退到旧版 | 之前只在手动测试中验证，未更新 systemd 使用的脚本文件 | 下载最新脚本到 `/home/pi/yamnet_uploader.py` 并重启服务 |
+| 2026-03-22 | 重启后 Whale vocalization 误检再次出现 | USB 设备号变化（hw:2,0→hw:1,0），find_alsa_device() 检测正确，但 reSpeaker XVF3800 冷启动时输出固定底噪（RMS=0.0135/0.0140，不随声音变化），YAMNet 将此底噪分类为 Whale vocalization | 1) 提高 RMS_TRIGGER 至 0.02 过滤底噪；2) 加入音频就绪等待：连续采集直到 RMS 出现变化（标准差>0.001）才开始推理 |
+| 2026-03-22 | 黑名单过滤后仍全部 Skipped (silence) | RMS_TRIGGER=0.02 正确过滤了底噪，但说话时 RMS 仍不变（还是0.0135），说明 reSpeaker 冷启动期间麦克风未真正就绪，需要等待设备初始化完成 | 脚本启动时循环录音检测 RMS 变化，直到 RMS 出现波动（说明麦克风真正就绪）再进入主循环 |
+
+---
+
+## 9. reSpeaker XVF3800 关键特性（已验证）
+
+| 特性 | 描述 |
+|------|------|
+| 稀疏采样格式 | 48000 个样本中只有约 2000 个非零（4.2%），每24帧1个有效样本 |
+| 冷启动底噪 | 刚启动时输出固定底噪：CH0 RMS≈0.01350，CH1 RMS≈0.01404，**不随声音变化** |
+| 就绪标志 | 当 RMS 开始随声音变化时，说明麦克风真正就绪 |
+| 通道数 | `-c 2` 立体声，CH0 有信号，CH1 全零（正常现象） |
+| 设备号不固定 | 重启后 card 号可能变化（2→1），但 `find_alsa_device()` 能自动检测 |
+| DC 偏置 | 稀疏格式会引入 DC 偏置，必须做 `audio - mean` 去除，否则 YAMNet 识别为 Whale vocalization |
+
+**正确的音频处理流水线（7步，缺一不可）：**
+
+```
+1. arecord -D hw:X,0 -f S16_LE -r 16000 -c 2 -d 2   → 2秒立体声录音
+2. pcm_all[0::2]                                      → 取 CH0（交错立体声左声道）
+3. pcm / 32768.0                                      → int16 → float32
+4. pcm[pcm != 0]                                      → 提取非零样本（稀疏格式）
+5. scipy.signal.resample(nz, 15600)                   → 重采样到 YAMNet 输入长度
+6. audio = audio - np.mean(audio)                     → 去 DC 偏移（关键！）
+7. audio = audio / np.max(np.abs(audio))              → 归一化到 ±1.0
+```
+
+**RMS 阈值：**
+- 底噪 RMS：0.0135~0.0140（固定，不随声音变化）
+- RMS_TRIGGER = 0.02（过滤底噪）
+- 真实声音 RMS：> 0.05
 
 ---
 

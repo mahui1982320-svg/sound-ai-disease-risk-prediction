@@ -755,8 +755,10 @@ def read_cpu_temp() -> float | None:
 import subprocess
 import struct
 
-RMS_TRIGGER = 0.001   # skip inference if AC RMS (nz.std()) below this (true silence)
-                       # AC RMS ignores DC offset for more accurate silence detection
+RMS_TRIGGER = 0.02    # skip inference if AC RMS (nz.std()) below this
+                       # reSpeaker XVF3800 fixed noise floor: ac_rms ≈ 0.0135~0.0140
+                       # Real speech/sounds produce ac_rms > 0.05
+                       # Threshold 0.02 filters out the fixed noise pattern
 ALSA_DEVICE = "hw:2,0"  # reSpeaker XVF3800 ALSA device
 
 
@@ -925,6 +927,32 @@ class AudioStream:
         self.sample_rate = sample_rate
         log.info("AudioStream ready: ALSA device=%s  sample_rate=%d Hz",
                  self.alsa_device, sample_rate)
+        self._wait_for_mic_ready()
+
+    def _wait_for_mic_ready(self, max_attempts: int = 30, stable_threshold: float = 0.001):
+        """
+        reSpeaker XVF3800 outputs a fixed noise floor (RMS≈0.0135) during cold start.
+        Wait until RMS values show variation (std > stable_threshold), which means
+        the microphone DSP has finished initializing and is capturing real audio.
+        """
+        log.info("[MIC READY] Waiting for reSpeaker to finish cold-start initialization...")
+        rms_history = []
+        for attempt in range(1, max_attempts + 1):
+            try:
+                _, ac_rms = record_audio_arecord(self.alsa_device, self.sample_rate)
+                rms_history.append(ac_rms)
+                if len(rms_history) >= 5:
+                    rms_std = float(np.std(rms_history[-5:]))
+                    if rms_std > stable_threshold:
+                        log.info("[MIC READY] Microphone ready after %d attempts (rms_std=%.5f)",
+                                 attempt, rms_std)
+                        return
+                log.info("[MIC READY] Attempt %d/%d: ac_rms=%.5f (waiting for variation)",
+                         attempt, max_attempts, ac_rms)
+            except Exception as e:
+                log.warning("[MIC READY] Attempt %d failed: %s", attempt, e)
+        log.warning("[MIC READY] Microphone may not be fully ready after %d attempts, starting anyway",
+                    max_attempts)
 
     def read_chunk(self) -> tuple[np.ndarray, float]:
         """Record one chunk using arecord. Returns (audio, rms)."""

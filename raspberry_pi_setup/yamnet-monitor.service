@@ -29,7 +29,7 @@ ExecStartPre=/bin/bash -c '\
 
 # 第2步：MD5 自检（仅告警，不阻止启动）
 ExecStartPre=/bin/bash -c '\
-  EXPECTED="be529edfc22f81e3f91d1228fca54357"; \
+  EXPECTED="9899902dd7b47a2d1766f708b7087ae6"; \
   ACTUAL=$(md5sum /home/pi/yamnet_uploader.py | cut -d" " -f1); \
   if [ "$ACTUAL" != "$EXPECTED" ]; then \
     echo "[ALERT] yamnet_uploader.py MD5 mismatch! Expected: $EXPECTED, Got: $ACTUAL"; \
