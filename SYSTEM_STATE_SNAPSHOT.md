@@ -320,8 +320,8 @@ HOME_BLACKLIST_CLASS_IDS = {
 | 症状 | 根本原因 | 解决方法 |
 |------|----------|----------|
 | Whale vocalization 持续 98% | USB 固件未激活，脚本版本错误（缺少 USB 重置） | 下载最新脚本（见第2.3节），`User=root` 运行服务 |
-| 全部 Skipped (silence)，ac_rms=0.0135 固定不变 | USB 固件未激活（重启后常见） | 确认服务以 root 运行，查看 `[USB RESET]` 日志 |
-| `[USB RESET] Permission denied` | 服务以 pi 用户运行 | 将 service 文件中 `User=pi` 改为 `User=root` |
+| 全部 Skipped (silence)，ac_rms=0.0135 固定不变 | USB 固件未激活（重启后常见） | **必须物理重插 USB**（拔掉等3秒再插回），然后 `sudo systemctl restart yamnet-monitor`。软件 USB 重置（写 /sys/bus/usb/devices/*/authorized）不足以激活固件。 |
+| `[USB RESET] Permission denied` | 服务以 pi 用户运行 | `sudo sed -i 's/User=pi/User=root/' /etc/systemd/system/yamnet-monitor.service && sudo systemctl daemon-reload && sudo systemctl restart yamnet-monitor` |
 | arecord 失败 `设备或资源忙` | yamnet 服务正在占用设备 | `sudo systemctl stop yamnet-monitor` 后再手动测试 |
 | 服务未启动 | systemd 未 enable | `sudo systemctl enable yamnet-monitor.service` |
 | 心跳失败 | 网络未连接 | `ping eldersafe-fv6io3sc.manus.space` |
