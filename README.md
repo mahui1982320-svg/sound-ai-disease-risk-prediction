@@ -43,8 +43,8 @@
 前置条件：Node.js 20+、pnpm 10+、可用的 MySQL 数据库。
 
 ```bash
-git clone git@github.com:mahui1982320-svg/elderly_safety_monitor.git
-cd elderly_safety_monitor
+git clone git@github.com:mahui1982320-svg/sound-ai-disease-risk-prediction.git
+cd sound-ai-disease-risk-prediction
 pnpm install
 pnpm db:push
 pnpm dev
@@ -57,8 +57,8 @@ pnpm dev
 前置条件：树莓派 4B（或兼容设备）、ReSpeaker 麦克风阵列、Python 3 与稳定网络。
 
 ```bash
-git clone git@github.com:mahui1982320-svg/elderly_safety_monitor.git
-cd elderly_safety_monitor
+git clone git@github.com:mahui1982320-svg/sound-ai-disease-risk-prediction.git
+cd sound-ai-disease-risk-prediction
 bash raspberry_pi_setup.sh
 bash install_yamnet_auto.sh
 python3 raspberry_pi_yamnet.py
