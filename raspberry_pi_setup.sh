@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ============================================================================
-# 小羊养老树莓派自动配置脚本
+# 声音AI＋疾病与风险预测树莓派自动配置脚本
 # 这个脚本会自动安装所有必要的软件和驱动
 # 使用方法：bash raspberry_pi_setup.sh
 # ============================================================================
@@ -9,7 +9,7 @@
 set -e  # 如果有错误就停止执行
 
 echo "=========================================="
-echo "小羊养老声音监控系统 - 树莓派自动配置"
+echo "声音AI＋疾病与风险预测声音监控系统 - 树莓派自动配置"
 echo "=========================================="
 echo ""
 
@@ -91,10 +91,10 @@ echo ""
 
 # 第5步：创建工作目录
 print_info "第5步：创建工作目录..."
-mkdir -p ~/xiaoyanglaoyao
-mkdir -p ~/xiaoyanglaoyao/logs
-mkdir -p ~/xiaoyanglaoyao/models
-mkdir -p ~/xiaoyanglaoyao/config
+mkdir -p ~/sound_ai_risk
+mkdir -p ~/sound_ai_risk/logs
+mkdir -p ~/sound_ai_risk/models
+mkdir -p ~/sound_ai_risk/config
 
 print_status "工作目录创建完成"
 echo ""
@@ -130,8 +130,8 @@ echo ""
 
 # 第7步：创建配置文件
 print_info "第7步：创建配置文件..."
-cat > ~/xiaoyanglaoyao/config/config.yaml <<EOF
-# 小羊养老声音监控系统配置文件
+cat > ~/sound_ai_risk/config/config.yaml <<EOF
+# 声音AI＋疾病与风险预测声音监控系统配置文件
 
 # 服务器配置
 server:
@@ -147,7 +147,7 @@ audio:
 
 # YAMNet模型配置
 yamnet:
-  model_path: "/home/pi/xiaoyanglaoyao/models/yamnet.tflite"
+  model_path: "/home/pi/sound_ai_risk/models/yamnet.tflite"
   confidence_threshold: 0.5  # 置信度阈值
   event_types:
     - "fall"  # 跌倒
@@ -158,7 +158,7 @@ yamnet:
 # 日志配置
 logging:
   level: "INFO"  # DEBUG, INFO, WARNING, ERROR
-  file: "/home/pi/xiaoyanglaoyao/logs/app.log"
+  file: "/home/pi/sound_ai_risk/logs/app.log"
   max_size: 10485760  # 10MB
   backup_count: 5
 
@@ -182,12 +182,12 @@ echo ""
 
 # 第9步：创建启动脚本
 print_info "第9步：创建启动脚本..."
-cat > ~/xiaoyanglaoyao/start.sh <<'EOF'
+cat > ~/sound_ai_risk/start.sh <<'EOF'
 #!/bin/bash
 
-# 小羊养老系统启动脚本
+# 声音AI＋疾病与风险预测系统启动脚本
 
-echo "启动小羊养老声音监控系统..."
+echo "启动声音AI＋疾病与风险预测声音监控系统..."
 
 # 检查配置文件
 if [ ! -f "config/config.yaml" ]; then
@@ -200,22 +200,22 @@ python3 main.py
 
 EOF
 
-chmod +x ~/xiaoyanglaoyao/start.sh
+chmod +x ~/sound_ai_risk/start.sh
 print_status "启动脚本创建完成"
 echo ""
 
 # 第10步：创建systemd服务
 print_info "第10步：创建systemd服务..."
-sudo tee /etc/systemd/system/xiaoyanglaoyao.service > /dev/null <<EOF
+sudo tee /etc/systemd/system/sound_ai_risk.service > /dev/null <<EOF
 [Unit]
-Description=Xiaoyang Laoao Audio Monitoring Service
+Description=Sound AI Risk Prediction Audio Monitoring Service
 After=network.target
 
 [Service]
 Type=simple
 User=pi
-WorkingDirectory=/home/pi/xiaoyanglaoyao
-ExecStart=/usr/bin/python3 /home/pi/xiaoyanglaoyao/main.py
+WorkingDirectory=/home/pi/sound_ai_risk
+ExecStart=/usr/bin/python3 /home/pi/sound_ai_risk/main.py
 Restart=always
 RestartSec=10
 StandardOutput=journal
@@ -238,7 +238,7 @@ echo "=========================================="
 echo ""
 echo "后续步骤："
 echo "1. 编辑配置文件："
-echo "   nano ~/xiaoyanglaoyao/config/config.yaml"
+echo "   nano ~/sound_ai_risk/config/config.yaml"
 echo ""
 echo "2. 修改以下内容："
 echo "   - server.url: 改为您的服务器地址"
@@ -249,13 +249,13 @@ echo "3. 测试麦克风："
 echo "   arecord -l"
 echo ""
 echo "4. 启动服务："
-echo "   sudo systemctl start xiaoyanglaoyao.service"
+echo "   sudo systemctl start sound_ai_risk.service"
 echo ""
 echo "5. 查看服务状态："
-echo "   sudo systemctl status xiaoyanglaoyao.service"
+echo "   sudo systemctl status sound_ai_risk.service"
 echo ""
 echo "6. 查看日志："
-echo "   sudo journalctl -u xiaoyanglaoyao.service -f"
+echo "   sudo journalctl -u sound_ai_risk.service -f"
 echo ""
 echo "需要重启系统以应用所有更改（可选）："
 echo "   sudo reboot"

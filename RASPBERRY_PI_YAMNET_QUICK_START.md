@@ -63,7 +63,7 @@ bash install_yamnet_auto.sh
 
 ```bash
 # 编辑配置文件
-nano ~/xiaoyanglaoyao/config/config.yaml
+nano ~/sound_ai_risk/config/config.yaml
 ```
 
 **需要修改的部分：**
@@ -91,10 +91,10 @@ bash verify_yamnet_installation.sh
 
 ```bash
 # 启动YAMNet服务
-sudo systemctl start xiaoyanglaoyao.service
+sudo systemctl start sound_ai_risk.service
 
 # 查看日志（实时显示）
-sudo journalctl -u xiaoyanglaoyao.service -f
+sudo journalctl -u sound_ai_risk.service -f
 ```
 
 ---
@@ -105,10 +105,10 @@ sudo journalctl -u xiaoyanglaoyao.service -f
 
 ```bash
 # 激活虚拟环境
-source ~/xiaoyanglaoyao/venv/bin/activate
+source ~/sound_ai_risk/venv/bin/activate
 
 # 运行程序（会录制10秒音频）
-python3 ~/xiaoyanglaoyao/raspberry_pi_yamnet.py
+python3 ~/sound_ai_risk/raspberry_pi_yamnet.py
 ```
 
 **预期输出：**
@@ -125,13 +125,13 @@ python3 ~/xiaoyanglaoyao/raspberry_pi_yamnet.py
 
 ```bash
 # 查看服务是否运行
-sudo systemctl status xiaoyanglaoyao.service
+sudo systemctl status sound_ai_risk.service
 
 # 重启服务
-sudo systemctl restart xiaoyanglaoyao.service
+sudo systemctl restart sound_ai_risk.service
 
 # 停止服务
-sudo systemctl stop xiaoyanglaoyao.service
+sudo systemctl stop sound_ai_risk.service
 ```
 
 ---
@@ -144,7 +144,7 @@ sudo systemctl stop xiaoyanglaoyao.service
 | 安装脚本失败 | 检查网络连接，重新运行脚本 |
 | 麦克风无法识别 | 检查硬件连接，重新安装驱动 |
 | 无法连接到服务器 | 检查配置文件中的服务器地址 |
-| 服务无法启动 | 查看日志：`sudo journalctl -u xiaoyanglaoyao.service -n 50` |
+| 服务无法启动 | 查看日志：`sudo journalctl -u sound_ai_risk.service -n 50` |
 | 内存不足 | 关闭不必要的服务，增加交换空间 |
 
 ---
@@ -177,7 +177,7 @@ sudo systemctl stop xiaoyanglaoyao.service
 
 1. 查看详细指南：`cat RASPBERRY_PI_YAMNET_INSTALLATION.md`
 2. 运行诊断脚本：`bash verify_yamnet_installation.sh`
-3. 查看实时日志：`sudo journalctl -u xiaoyanglaoyao.service -f`
+3. 查看实时日志：`sudo journalctl -u sound_ai_risk.service -f`
 
 ---
 

@@ -106,7 +106,7 @@ YAMNet是Google开发的一个**开源音频分类模型**，它可以识别521�
 含义：模型只有55%的把握，可能不是真实的事件
 ```
 
-**在小羊养老系统中：**
+**在声音AI＋疾病与风险预测系统中：**
 - **置信度 > 70%** - 自动触发警报，推送给管家
 - **置信度 50-70%** - 标记为"待复核"，管家需要手动确认
 - **置信度 < 50%** - 忽略，可能是误报
@@ -544,7 +544,7 @@ def calibrate_microphone(device_id, duration=5):
 
 ```bash
 # 下载最新模型
-cd ~/xiaoyanglaoyao/models
+cd ~/sound_ai_risk/models
 wget https://tfhub.dev/google/lite-model/yamnet/classification/tflite/1?lite-format=tflite \
   -O yamnet_latest.tflite
 
@@ -555,7 +555,7 @@ cp yamnet.tflite yamnet_backup.tflite
 mv yamnet_latest.tflite yamnet.tflite
 
 # 重启服务
-sudo systemctl restart xiaoyanglaoyao.service
+sudo systemctl restart sound_ai_risk.service
 ```
 
 ---

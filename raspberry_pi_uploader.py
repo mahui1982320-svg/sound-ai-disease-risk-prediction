@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-小羊养老树莓派上传客户端
+声音AI＋疾病与风险预测树莓派上传客户端
 将YAMNet推理结果上传到云端系统
 
 使用方法：
@@ -107,7 +107,7 @@ class Config:
     
     def __init__(self, config_path: str = None):
         """加载配置"""
-        self.config_path = config_path or Path.home() / 'xiaoyanglaoyao' / 'config.yaml'
+        self.config_path = config_path or Path.home() / 'sound_ai_risk' / 'config.yaml'
         self.config = self._load_config()
     
     def _load_config(self) -> Dict:
@@ -165,7 +165,7 @@ class Logger:
     
     def __init__(self, name: str, log_dir: str = None):
         """初始化日志"""
-        self.log_dir = Path(log_dir or Path.home() / 'xiaoyanglaoyao' / 'logs')
+        self.log_dir = Path(log_dir or Path.home() / 'sound_ai_risk' / 'logs')
         self.log_dir.mkdir(parents=True, exist_ok=True)
         
         self.logger = logging.getLogger(name)
@@ -417,7 +417,7 @@ class YAMNetUploader:
 
 def main():
     parser = argparse.ArgumentParser(
-        description='小羊养老树莓派上传客户端',
+        description='声音AI＋疾病与风险预测树莓派上传客户端',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog='''
 示例：
@@ -492,7 +492,7 @@ def main():
         else:
             # 实际运行模式
             print("\n" + "=" * 70)
-            print("小羊养老树莓派上传客户端 - 运行中")
+            print("声音AI＋疾病与风险预测树莓派上传客户端 - 运行中")
             print("=" * 70)
             print(f"设备ID: {uploader.device_id}")
             print(f"老人ID: {uploader.elderly_id}")

@@ -2,7 +2,7 @@
 
 ## 给非技术人员的详细步骤指南
 
-您好！这份指南将帮助您一步步地将树莓派和麦克风阵列集成到小羊养老声音监控系统中。即使您不是技术人员，也能按照这份指南完成。
+您好！这份指南将帮助您一步步地将树莓派和麦克风阵列集成到声音AI＋疾病与风险预测声音监控系统中。即使您不是技术人员，也能按照这份指南完成。
 
 ---
 
@@ -335,8 +335,8 @@ aplay test.wav
 ```bash
 # 进入树莓派的工作目录
 cd ~
-mkdir -p xiaoyanglaoyao
-cd xiaoyanglaoyao
+mkdir -p sound_ai_risk
+cd sound_ai_risk
 
 # 下载推理脚本
 wget https://your-server.com/raspberry_pi_yamnet.py
@@ -370,21 +370,21 @@ SERVER_URL = "http://your-server-address:3000"
 #### 10.1 创建启动脚本
 
 ```bash
-sudo nano /etc/systemd/system/xiaoyanglaoyao.service
+sudo nano /etc/systemd/system/sound_ai_risk.service
 ```
 
 输入以下内容：
 
 ```ini
 [Unit]
-Description=Xiaoyang Laoao Audio Monitoring
+Description=Sound AI Risk Prediction Audio Monitoring
 After=network.target
 
 [Service]
 Type=simple
 User=pi
-WorkingDirectory=/home/pi/xiaoyanglaoyao
-ExecStart=/usr/bin/python3 /home/pi/xiaoyanglaoyao/raspberry_pi_yamnet.py
+WorkingDirectory=/home/pi/sound_ai_risk
+ExecStart=/usr/bin/python3 /home/pi/sound_ai_risk/raspberry_pi_yamnet.py
 Restart=always
 RestartSec=10
 
@@ -397,14 +397,14 @@ WantedBy=multi-user.target
 #### 10.2 启用自动启动
 
 ```bash
-sudo systemctl enable xiaoyanglaoyao.service
-sudo systemctl start xiaoyanglaoyao.service
+sudo systemctl enable sound_ai_risk.service
+sudo systemctl start sound_ai_risk.service
 ```
 
 #### 10.3 检查服务状态
 
 ```bash
-sudo systemctl status xiaoyanglaoyao.service
+sudo systemctl status sound_ai_risk.service
 ```
 
 应该看到 `active (running)` 的状态。
@@ -422,7 +422,7 @@ sudo systemctl status xiaoyanglaoyao.service
 
 2. **查看日志**
    ```bash
-   sudo journalctl -u xiaoyanglaoyao.service -f
+   sudo journalctl -u sound_ai_risk.service -f
    ```
 
 3. **观察输出**
@@ -545,7 +545,7 @@ sudo systemctl status xiaoyanglaoyao.service
 
 3. **重启服务**
    ```bash
-   sudo systemctl restart xiaoyanglaoyao.service
+   sudo systemctl restart sound_ai_risk.service
    ```
 
 ### 故障排查日志
@@ -554,13 +554,13 @@ sudo systemctl status xiaoyanglaoyao.service
 
 ```bash
 # 查看最近的日志
-sudo journalctl -u xiaoyanglaoyao.service -n 100
+sudo journalctl -u sound_ai_risk.service -n 100
 
 # 实时查看日志
-sudo journalctl -u xiaoyanglaoyao.service -f
+sudo journalctl -u sound_ai_risk.service -f
 
 # 查看特定时间的日志
-sudo journalctl -u xiaoyanglaoyao.service --since "2024-03-09 10:00:00"
+sudo journalctl -u sound_ai_risk.service --since "2024-03-09 10:00:00"
 ```
 
 ---

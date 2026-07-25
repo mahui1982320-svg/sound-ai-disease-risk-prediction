@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ============================================================================
-# 小羊养老YAMNet安装验证脚本
+# 声音AI＋疾病与风险预测YAMNet安装验证脚本
 # 这个脚本会检查YAMNet安装是否成功，所有组件是否正常工作
 # 使用方法：bash verify_yamnet_installation.sh
 # ============================================================================
@@ -50,11 +50,11 @@ test_directories() {
     print_section "测试1：检查工作目录"
     
     local dirs=(
-        "$HOME/xiaoyanglaoyao"
-        "$HOME/xiaoyanglaoyao/models"
-        "$HOME/xiaoyanglaoyao/config"
-        "$HOME/xiaoyanglaoyao/logs"
-        "$HOME/xiaoyanglaoyao/recordings"
+        "$HOME/sound_ai_risk"
+        "$HOME/sound_ai_risk/models"
+        "$HOME/sound_ai_risk/config"
+        "$HOME/sound_ai_risk/logs"
+        "$HOME/sound_ai_risk/recordings"
     )
     
     for dir in "${dirs[@]}"; do
@@ -70,8 +70,8 @@ test_directories() {
 test_yamnet_models() {
     print_section "测试2：检查YAMNet模型文件"
     
-    local model_file="$HOME/xiaoyanglaoyao/models/yamnet.tflite"
-    local labels_file="$HOME/xiaoyanglaoyao/models/yamnet_labels.txt"
+    local model_file="$HOME/sound_ai_risk/models/yamnet.tflite"
+    local labels_file="$HOME/sound_ai_risk/models/yamnet_labels.txt"
     
     if [ -f "$model_file" ]; then
         local size=$(du -h "$model_file" | awk '{print $1}')
@@ -92,7 +92,7 @@ test_yamnet_models() {
 test_config_file() {
     print_section "测试3：检查配置文件"
     
-    local config_file="$HOME/xiaoyanglaoyao/config/config.yaml"
+    local config_file="$HOME/sound_ai_risk/config/config.yaml"
     
     if [ -f "$config_file" ]; then
         print_pass "配置文件存在"
@@ -124,7 +124,7 @@ test_config_file() {
 test_python_venv() {
     print_section "测试4：检查Python虚拟环境"
     
-    local venv_dir="$HOME/xiaoyanglaoyao/venv"
+    local venv_dir="$HOME/sound_ai_risk/venv"
     
     if [ -d "$venv_dir" ]; then
         print_pass "虚拟环境目录存在"
@@ -146,7 +146,7 @@ test_python_venv() {
 test_python_packages() {
     print_section "测试5：检查Python依赖包"
     
-    local venv_python="$HOME/xiaoyanglaoyao/venv/bin/python3"
+    local venv_python="$HOME/sound_ai_risk/venv/bin/python3"
     
     local packages=(
         "numpy"
@@ -202,7 +202,7 @@ test_network() {
     fi
     
     # 检查配置中的服务器地址
-    local config_file="$HOME/xiaoyanglaoyao/config/config.yaml"
+    local config_file="$HOME/sound_ai_risk/config/config.yaml"
     if [ -f "$config_file" ]; then
         local server_url=$(grep "url:" "$config_file" | awk -F'"' '{print $2}' | head -1)
         if [ -n "$server_url" ]; then
@@ -222,11 +222,11 @@ test_network() {
 test_systemd_service() {
     print_section "测试8：检查systemd服务"
     
-    if systemctl list-unit-files 2>/dev/null | grep -q "xiaoyanglaoyao.service"; then
+    if systemctl list-unit-files 2>/dev/null | grep -q "sound_ai_risk.service"; then
         print_pass "systemd服务已注册"
         
         # 检查服务状态
-        local service_status=$(systemctl is-active xiaoyanglaoyao.service 2>/dev/null || echo "inactive")
+        local service_status=$(systemctl is-active sound_ai_risk.service 2>/dev/null || echo "inactive")
         if [ "$service_status" = "active" ]; then
             print_pass "服务正在运行"
         else
@@ -241,7 +241,7 @@ test_systemd_service() {
 test_yamnet_program() {
     print_section "测试9：检查YAMNet程序文件"
     
-    local program_file="$HOME/xiaoyanglaoyao/raspberry_pi_yamnet.py"
+    local program_file="$HOME/sound_ai_risk/raspberry_pi_yamnet.py"
     
     if [ -f "$program_file" ]; then
         print_pass "YAMNet程序文件存在"
@@ -265,7 +265,7 @@ test_yamnet_program() {
 test_log_files() {
     print_section "测试10：检查日志文件"
     
-    local log_dir="$HOME/xiaoyanglaoyao/logs"
+    local log_dir="$HOME/sound_ai_risk/logs"
     local log_file="$log_dir/app.log"
     
     if [ -d "$log_dir" ]; then
@@ -333,8 +333,8 @@ test_quick_functionality() {
         return
     fi
     
-    local venv_python="$HOME/xiaoyanglaoyao/venv/bin/python3"
-    local program_file="$HOME/xiaoyanglaoyao/raspberry_pi_yamnet.py"
+    local venv_python="$HOME/sound_ai_risk/venv/bin/python3"
+    local program_file="$HOME/sound_ai_risk/raspberry_pi_yamnet.py"
     
     if [ -f "$program_file" ]; then
         print_info "启动YAMNet程序进行测试..."
@@ -368,10 +368,10 @@ generate_report() {
         echo -e "${GREEN}✓ 所有测试通过！系统已准备好运行。${NC}"
         echo ""
         echo "后续步骤:"
-        echo "1. 编辑配置文件: nano ~/xiaoyanglaoyao/config/config.yaml"
+        echo "1. 编辑配置文件: nano ~/sound_ai_risk/config/config.yaml"
         echo "2. 设置正确的服务器地址和老人信息"
-        echo "3. 启动服务: sudo systemctl start xiaoyanglaoyao.service"
-        echo "4. 查看日志: sudo journalctl -u xiaoyanglaoyao.service -f"
+        echo "3. 启动服务: sudo systemctl start sound_ai_risk.service"
+        echo "4. 查看日志: sudo journalctl -u sound_ai_risk.service -f"
     else
         echo -e "${YELLOW}有些测试失败，请查看上面的详细信息。${NC}"
         echo ""
@@ -388,7 +388,7 @@ generate_report() {
 # 主函数
 main() {
     echo "=========================================="
-    echo "小羊养老YAMNet安装验证工具"
+    echo "声音AI＋疾病与风险预测YAMNet安装验证工具"
     echo "=========================================="
     echo ""
     

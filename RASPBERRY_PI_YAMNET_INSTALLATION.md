@@ -125,16 +125,16 @@ arecord -l
 
 ```bash
 # 创建工作目录
-mkdir -p ~/xiaoyanglaoyao/models
-mkdir -p ~/xiaoyanglaoyao/config
-mkdir -p ~/xiaoyanglaoyao/logs
-mkdir -p ~/xiaoyanglaoyao/recordings
+mkdir -p ~/sound_ai_risk/models
+mkdir -p ~/sound_ai_risk/config
+mkdir -p ~/sound_ai_risk/logs
+mkdir -p ~/sound_ai_risk/recordings
 
 # 创建Python虚拟环境
-python3 -m venv ~/xiaoyanglaoyao/venv
+python3 -m venv ~/sound_ai_risk/venv
 
 # 激活虚拟环境
-source ~/xiaoyanglaoyao/venv/bin/activate
+source ~/sound_ai_risk/venv/bin/activate
 
 # 升级pip
 pip install --upgrade pip setuptools wheel
@@ -150,7 +150,7 @@ pip install --upgrade pip setuptools wheel
 
 ```bash
 # 确保虚拟环境已激活
-source ~/xiaoyanglaoyao/venv/bin/activate
+source ~/sound_ai_risk/venv/bin/activate
 
 # 安装NumPy（数值计算库）
 pip install numpy
@@ -187,10 +187,10 @@ YAMNet模型文件大约50MB，需要从Google下载。
 
 ```bash
 # 确保虚拟环境已激活
-source ~/xiaoyanglaoyao/venv/bin/activate
+source ~/sound_ai_risk/venv/bin/activate
 
 # 进入模型目录
-cd ~/xiaoyanglaoyao/models
+cd ~/sound_ai_risk/models
 
 # 下载YAMNet TFLite模型
 wget https://tfhub.dev/google/lite-model/yamnet/classification/tflite/1?lite-format=tflite -O yamnet.tflite
@@ -211,8 +211,8 @@ ls -lh
 **如果下载失败**：可以尝试手动下载，然后通过SCP上传到树莓派：
 ```bash
 # 在您的电脑上运行
-scp yamnet.tflite pi@192.168.1.100:~/xiaoyanglaoyao/models/
-scp yamnet_labels.txt pi@192.168.1.100:~/xiaoyanglaoyao/models/
+scp yamnet.tflite pi@192.168.1.100:~/sound_ai_risk/models/
+scp yamnet_labels.txt pi@192.168.1.100:~/sound_ai_risk/models/
 ```
 
 ---
@@ -223,13 +223,13 @@ scp yamnet_labels.txt pi@192.168.1.100:~/xiaoyanglaoyao/models/
 
 ```bash
 # 创建配置文件
-nano ~/xiaoyanglaoyao/config/config.yaml
+nano ~/sound_ai_risk/config/config.yaml
 ```
 
 **将以下内容复制到文件中**：
 
 ```yaml
-# 小羊养老YAMNet配置文件
+# 声音AI＋疾病与风险预测YAMNet配置文件
 
 # 服务器配置
 server:
@@ -263,9 +263,9 @@ audio:
 # YAMNet配置
 yamnet:
   # 模型文件路径
-  model_path: "/home/pi/xiaoyanglaoyao/models/yamnet.tflite"
+  model_path: "/home/pi/sound_ai_risk/models/yamnet.tflite"
   # 标签文件路径
-  labels_path: "/home/pi/xiaoyanglaoyao/models/yamnet_labels.txt"
+  labels_path: "/home/pi/sound_ai_risk/models/yamnet_labels.txt"
   # 置信度阈值（0-1，只有置信度高于此值的事件才会触发警报）
   confidence_threshold: 0.7
   # 需要监听的事件类型
@@ -286,7 +286,7 @@ logging:
   # 日志级别：DEBUG, INFO, WARNING, ERROR
   level: "INFO"
   # 日志文件路径
-  log_file: "/home/pi/xiaoyanglaoyao/logs/app.log"
+  log_file: "/home/pi/sound_ai_risk/logs/app.log"
   # 最大日志文件大小（MB）
   max_size: 50
   # 保留的日志文件数量
@@ -315,15 +315,15 @@ alert:
 ```bash
 # 从您的电脑复制程序文件到树莓派
 # 在您的电脑上运行
-scp raspberry_pi_yamnet.py pi@192.168.1.100:~/xiaoyanglaoyao/
+scp raspberry_pi_yamnet.py pi@192.168.1.100:~/sound_ai_risk/
 
 # 或者，如果已经在树莓派上，直接复制
-cp /path/to/raspberry_pi_yamnet.py ~/xiaoyanglaoyao/
+cp /path/to/raspberry_pi_yamnet.py ~/sound_ai_risk/
 ```
 
 **验证文件**：
 ```bash
-ls -lh ~/xiaoyanglaoyao/raspberry_pi_yamnet.py
+ls -lh ~/sound_ai_risk/raspberry_pi_yamnet.py
 ```
 
 ---
@@ -334,10 +334,10 @@ ls -lh ~/xiaoyanglaoyao/raspberry_pi_yamnet.py
 
 ```bash
 # 激活虚拟环境
-source ~/xiaoyanglaoyao/venv/bin/activate
+source ~/sound_ai_risk/venv/bin/activate
 
 # 进入工作目录
-cd ~/xiaoyanglaoyao
+cd ~/sound_ai_risk
 
 # 运行YAMNet程序（会录制10秒音频并分析）
 python3 raspberry_pi_yamnet.py
@@ -346,8 +346,8 @@ python3 raspberry_pi_yamnet.py
 **预期输出**：
 ```
 [INFO] YAMNet程序启动
-[INFO] 加载模型: /home/pi/xiaoyanglaoyao/models/yamnet.tflite
-[INFO] 加载标签: /home/pi/xiaoyanglaoyao/models/yamnet_labels.txt
+[INFO] 加载模型: /home/pi/sound_ai_risk/models/yamnet.tflite
+[INFO] 加载标签: /home/pi/sound_ai_risk/models/yamnet_labels.txt
 [INFO] 开始监听音频...
 [INFO] 正在录制10秒音频...
 [INFO] 音频录制完成
@@ -371,22 +371,22 @@ python3 raspberry_pi_yamnet.py
 
 ```bash
 # 创建systemd服务文件
-sudo nano /etc/systemd/system/xiaoyanglaoyao.service
+sudo nano /etc/systemd/system/sound_ai_risk.service
 ```
 
 **将以下内容复制到文件中**：
 
 ```ini
 [Unit]
-Description=小羊养老YAMNet监控服务
+Description=声音AI＋疾病与风险预测YAMNet监控服务
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=simple
 User=pi
-WorkingDirectory=/home/pi/xiaoyanglaoyao
-ExecStart=/home/pi/xiaoyanglaoyao/venv/bin/python3 /home/pi/xiaoyanglaoyao/raspberry_pi_yamnet.py
+WorkingDirectory=/home/pi/sound_ai_risk
+ExecStart=/home/pi/sound_ai_risk/venv/bin/python3 /home/pi/sound_ai_risk/raspberry_pi_yamnet.py
 Restart=always
 RestartSec=10
 StandardOutput=journal
@@ -404,22 +404,22 @@ WantedBy=multi-user.target
 sudo systemctl daemon-reload
 
 # 启用服务（开机自启）
-sudo systemctl enable xiaoyanglaoyao.service
+sudo systemctl enable sound_ai_risk.service
 
 # 启动服务
-sudo systemctl start xiaoyanglaoyao.service
+sudo systemctl start sound_ai_risk.service
 
 # 查看服务状态
-sudo systemctl status xiaoyanglaoyao.service
+sudo systemctl status sound_ai_risk.service
 
 # 查看实时日志
-sudo journalctl -u xiaoyanglaoyao.service -f
+sudo journalctl -u sound_ai_risk.service -f
 ```
 
 **预期输出**：
 ```
-● xiaoyanglaoyao.service - 小羊养老YAMNet监控服务
-   Loaded: loaded (/etc/systemd/system/xiaoyanglaoyao.service; enabled; vendor preset: enabled)
+● sound_ai_risk.service - 声音AI＋疾病与风险预测YAMNet监控服务
+   Loaded: loaded (/etc/systemd/system/sound_ai_risk.service; enabled; vendor preset: enabled)
    Active: active (running) since Mon 2024-03-09 10:15:30 UTC; 5s ago
    Main PID: 1234 (python3)
    ...
@@ -444,10 +444,10 @@ sudo journalctl -u xiaoyanglaoyao.service -f
 
 ```bash
 # 检查服务是否运行
-sudo systemctl status xiaoyanglaoyao.service
+sudo systemctl status sound_ai_risk.service
 
 # 检查日志是否有错误
-sudo journalctl -u xiaoyanglaoyao.service -n 50
+sudo journalctl -u sound_ai_risk.service -n 50
 
 # 检查是否有音频设备
 arecord -l
@@ -501,7 +501,7 @@ ping 192.168.1.100
 curl http://192.168.1.100:3000
 
 # 检查配置文件中的服务器地址
-nano ~/xiaoyanglaoyao/config/config.yaml
+nano ~/sound_ai_risk/config/config.yaml
 ```
 
 ### 问题4：内存不足
@@ -596,9 +596,9 @@ yamnet:
 
 如果遇到问题，请：
 
-1. 查看日志文件：`tail -f ~/xiaoyanglaoyao/logs/app.log`
+1. 查看日志文件：`tail -f ~/sound_ai_risk/logs/app.log`
 2. 运行诊断脚本：`bash ~/raspberry_pi_test.sh`
-3. 检查配置文件：`cat ~/xiaoyanglaoyao/config/config.yaml`
+3. 检查配置文件：`cat ~/sound_ai_risk/config/config.yaml`
 4. 查看系统信息：`uname -a && free -h && df -h`
 
 ---

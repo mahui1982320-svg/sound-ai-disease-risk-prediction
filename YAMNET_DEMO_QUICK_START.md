@@ -19,13 +19,13 @@
 ### 第1步：激活虚拟环境
 
 ```bash
-source ~/xiaoyanglaoyao/venv/bin/activate
+source ~/sound_ai_risk/venv/bin/activate
 ```
 
 ### 第2步：进入项目目录
 
 ```bash
-cd ~/xiaoyanglaoyao
+cd ~/sound_ai_risk
 ```
 
 ### 第3步：运行演示
@@ -244,9 +244,9 @@ python3 yamnet_demo.py --mode file --audio /home/pi/recordings/2026-03-08.wav
 
 while true; do
     echo "开始监听..."
-    python3 ~/xiaoyanglaoyao/yamnet_demo.py \
+    python3 ~/sound_ai_risk/yamnet_demo.py \
         --mode interactive \
-        --duration 3600 >> ~/xiaoyanglaoyao/logs/demo.log
+        --duration 3600 >> ~/sound_ai_risk/logs/demo.log
     
     # 等待23小时后再运行
     sleep 82800
@@ -357,7 +357,7 @@ sudo reboot
 **解决方案**：
 ```bash
 # 关闭不必要的服务
-sudo systemctl stop xiaoyanglaoyao.service
+sudo systemctl stop sound_ai_risk.service
 
 # 查看系统资源
 top
@@ -394,7 +394,7 @@ sudo reboot
 ## 📞 需要帮助？
 
 1. 查看详细文档：`cat YAMNET_REALTIME_AUDIO_CLASSIFICATION.md`
-2. 查看程序日志：`tail -f ~/xiaoyanglaoyao/logs/app.log`
+2. 查看程序日志：`tail -f ~/sound_ai_risk/logs/app.log`
 3. 运行诊断脚本：`bash verify_yamnet_installation.sh`
 
 ---

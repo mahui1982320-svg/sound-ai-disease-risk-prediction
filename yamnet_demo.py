@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-小羊养老YAMNet演示脚本
+声音AI＋疾病与风险预测YAMNet演示脚本
 这个脚本展示了如何使用YAMNet进行实时音频分类
 
 使用方法：
@@ -39,8 +39,8 @@ class Config:
     NORMAL_THRESHOLD = 0.50  # 日常声音
     
     # 模型路径
-    MODEL_PATH = Path.home() / 'xiaoyanglaoyao' / 'models' / 'yamnet.tflite'
-    LABELS_PATH = Path.home() / 'xiaoyanglaoyao' / 'models' / 'yamnet_labels.txt'
+    MODEL_PATH = Path.home() / 'sound_ai_risk' / 'models' / 'yamnet.tflite'
+    LABELS_PATH = Path.home() / 'sound_ai_risk' / 'models' / 'yamnet_labels.txt'
     
     # 事件映射
     EVENT_MAPPING = {
@@ -314,7 +314,7 @@ class FileDemo:
 
 def main():
     parser = argparse.ArgumentParser(
-        description='小羊养老YAMNet演示脚本',
+        description='声音AI＋疾病与风险预测YAMNet演示脚本',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog='''
 示例：

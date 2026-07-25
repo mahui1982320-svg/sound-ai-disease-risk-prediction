@@ -17,7 +17,7 @@
 
 ```bash
 # 在树莓派上执行
-cd ~/xiaoyanglaoyao
+cd ~/sound_ai_risk
 
 # 从云端系统下载文件
 curl -O https://your-domain.manus.space/files/raspberry_pi_uploader.py
@@ -42,7 +42,7 @@ nano config.yaml
 
 ```bash
 # 激活虚拟环境
-source ~/xiaoyanglaoyao/venv/bin/activate
+source ~/sound_ai_risk/venv/bin/activate
 
 # 安装依赖
 pip install -r requirements.txt
@@ -142,16 +142,16 @@ python3 raspberry_pi_uploader.py --config config.yaml --test
 
 ```bash
 # 查看实时日志
-tail -f ~/xiaoyanglaoyao/logs/uploader.log
+tail -f ~/sound_ai_risk/logs/uploader.log
 
 # 查看最近100条日志
-tail -100 ~/xiaoyanglaoyao/logs/uploader.log
+tail -100 ~/sound_ai_risk/logs/uploader.log
 
 # 搜索错误
-grep ERROR ~/xiaoyanglaoyao/logs/uploader.log
+grep ERROR ~/sound_ai_risk/logs/uploader.log
 
 # 统计上传成功数
-grep "✓ 上传成功" ~/xiaoyanglaoyao/logs/uploader.log | wc -l
+grep "✓ 上传成功" ~/sound_ai_risk/logs/uploader.log | wc -l
 ```
 
 ### 管理进程
@@ -261,12 +261,12 @@ free -h
 
 ```bash
 # 查看上传成功率
-grep "✓ 上传成功" ~/xiaoyanglaoyao/logs/uploader.log | wc -l
-grep "✗" ~/xiaoyanglaoyao/logs/uploader.log | wc -l
+grep "✓ 上传成功" ~/sound_ai_risk/logs/uploader.log | wc -l
+grep "✗" ~/sound_ai_risk/logs/uploader.log | wc -l
 
 # 计算成功率
-success=$(grep "✓ 上传成功" ~/xiaoyanglaoyao/logs/uploader.log | wc -l)
-failed=$(grep "✗" ~/xiaoyanglaoyao/logs/uploader.log | wc -l)
+success=$(grep "✓ 上传成功" ~/sound_ai_risk/logs/uploader.log | wc -l)
+failed=$(grep "✗" ~/sound_ai_risk/logs/uploader.log | wc -l)
 total=$((success + failed))
 rate=$((success * 100 / total))
 echo "上传成功率: $rate%"

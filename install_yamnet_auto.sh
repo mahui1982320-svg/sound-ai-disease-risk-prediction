@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ============================================================================
-# 小羊养老YAMNet一键自动安装脚本
+# 声音AI＋疾病与风险预测YAMNet一键自动安装脚本
 # 这个脚本会自动完成YAMNet在树莓派上的所有安装步骤
 # 使用方法：bash install_yamnet_auto.sh
 # ============================================================================
@@ -151,10 +151,10 @@ step_install_respeaker() {
 step_create_directories() {
     log_info "第4步：创建工作目录..."
     
-    mkdir -p ~/xiaoyanglaoyao/models
-    mkdir -p ~/xiaoyanglaoyao/config
-    mkdir -p ~/xiaoyanglaoyao/logs
-    mkdir -p ~/xiaoyanglaoyao/recordings
+    mkdir -p ~/sound_ai_risk/models
+    mkdir -p ~/sound_ai_risk/config
+    mkdir -p ~/sound_ai_risk/logs
+    mkdir -p ~/sound_ai_risk/recordings
     
     log_success "工作目录创建完成"
 }
@@ -163,8 +163,8 @@ step_create_directories() {
 step_create_venv() {
     log_info "第5步：创建Python虚拟环境..."
     
-    python3 -m venv ~/xiaoyanglaoyao/venv
-    source ~/xiaoyanglaoyao/venv/bin/activate
+    python3 -m venv ~/sound_ai_risk/venv
+    source ~/sound_ai_risk/venv/bin/activate
     pip install --upgrade pip setuptools wheel
     
     log_success "Python虚拟环境创建完成"
@@ -174,7 +174,7 @@ step_create_venv() {
 step_install_python_packages() {
     log_info "第6步：安装Python依赖（这可能需要15-20分钟）..."
     
-    source ~/xiaoyanglaoyao/venv/bin/activate
+    source ~/sound_ai_risk/venv/bin/activate
     
     local packages=(
         "numpy"
@@ -205,7 +205,7 @@ step_install_python_packages() {
 step_download_yamnet_model() {
     log_info "第7步：下载YAMNet模型（约50MB）..."
     
-    cd ~/xiaoyanglaoyao/models
+    cd ~/sound_ai_risk/models
     
     log_info "下载YAMNet TFLite模型..."
     wget -q https://tfhub.dev/google/lite-model/yamnet/classification/tflite/1?lite-format=tflite -O yamnet.tflite
@@ -226,8 +226,8 @@ step_download_yamnet_model() {
 step_create_config() {
     log_info "第8步：创建配置文件..."
     
-    cat > ~/xiaoyanglaoyao/config/config.yaml << 'EOF'
-# 小羊养老YAMNet配置文件
+    cat > ~/sound_ai_risk/config/config.yaml << 'EOF'
+# 声音AI＋疾病与风险预测YAMNet配置文件
 
 # 服务器配置
 server:
@@ -250,8 +250,8 @@ audio:
 
 # YAMNet配置
 yamnet:
-  model_path: "/home/pi/xiaoyanglaoyao/models/yamnet.tflite"
-  labels_path: "/home/pi/xiaoyanglaoyao/models/yamnet_labels.txt"
+  model_path: "/home/pi/sound_ai_risk/models/yamnet.tflite"
+  labels_path: "/home/pi/sound_ai_risk/models/yamnet_labels.txt"
   confidence_threshold: 0.7
   monitored_events:
     - "Thud"
@@ -268,7 +268,7 @@ yamnet:
 # 日志配置
 logging:
   level: "INFO"
-  log_file: "/home/pi/xiaoyanglaoyao/logs/app.log"
+  log_file: "/home/pi/sound_ai_risk/logs/app.log"
   max_size: 50
   backup_count: 5
 
@@ -282,24 +282,24 @@ EOF
     
     log_success "配置文件创建完成"
     log_warning "请编辑配置文件并设置正确的服务器地址和老人信息"
-    log_info "编辑配置：nano ~/xiaoyanglaoyao/config/config.yaml"
+    log_info "编辑配置：nano ~/sound_ai_risk/config/config.yaml"
 }
 
 # 第9步：设置自动启动
 step_setup_autostart() {
     log_info "第9步：设置自动启动..."
     
-    sudo tee /etc/systemd/system/xiaoyanglaoyao.service > /dev/null << 'EOF'
+    sudo tee /etc/systemd/system/sound_ai_risk.service > /dev/null << 'EOF'
 [Unit]
-Description=小羊养老YAMNet监控服务
+Description=声音AI＋疾病与风险预测YAMNet监控服务
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=simple
 User=pi
-WorkingDirectory=/home/pi/xiaoyanglaoyao
-ExecStart=/home/pi/xiaoyanglaoyao/venv/bin/python3 /home/pi/xiaoyanglaoyao/raspberry_pi_yamnet.py
+WorkingDirectory=/home/pi/sound_ai_risk
+ExecStart=/home/pi/sound_ai_risk/venv/bin/python3 /home/pi/sound_ai_risk/raspberry_pi_yamnet.py
 Restart=always
 RestartSec=10
 StandardOutput=journal
@@ -310,7 +310,7 @@ WantedBy=multi-user.target
 EOF
     
     sudo systemctl daemon-reload
-    sudo systemctl enable xiaoyanglaoyao.service
+    sudo systemctl enable sound_ai_risk.service
     
     log_success "自动启动配置完成"
 }
@@ -318,7 +318,7 @@ EOF
 # 主函数
 main() {
     echo "=========================================="
-    echo "小羊养老YAMNet一键安装脚本"
+    echo "声音AI＋疾病与风险预测YAMNet一键安装脚本"
     echo "=========================================="
     echo ""
     
@@ -383,20 +383,20 @@ main() {
     echo ""
     echo "后续步骤："
     echo "1. 编辑配置文件："
-    echo "   nano ~/xiaoyanglaoyao/config/config.yaml"
+    echo "   nano ~/sound_ai_risk/config/config.yaml"
     echo ""
     echo "2. 复制YAMNet程序文件："
-    echo "   cp raspberry_pi_yamnet.py ~/xiaoyanglaoyao/"
+    echo "   cp raspberry_pi_yamnet.py ~/sound_ai_risk/"
     echo ""
     echo "3. 测试YAMNet程序："
-    echo "   source ~/xiaoyanglaoyao/venv/bin/activate"
-    echo "   python3 ~/xiaoyanglaoyao/raspberry_pi_yamnet.py"
+    echo "   source ~/sound_ai_risk/venv/bin/activate"
+    echo "   python3 ~/sound_ai_risk/raspberry_pi_yamnet.py"
     echo ""
     echo "4. 启动服务："
-    echo "   sudo systemctl start xiaoyanglaoyao.service"
+    echo "   sudo systemctl start sound_ai_risk.service"
     echo ""
     echo "5. 查看日志："
-    echo "   sudo journalctl -u xiaoyanglaoyao.service -f"
+    echo "   sudo journalctl -u sound_ai_risk.service -f"
     echo ""
 }
 

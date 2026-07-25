@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ============================================================================
-# 小羊养老树莓派硬件测试脚本
+# 声音AI＋疾病与风险预测树莓派硬件测试脚本
 # 这个脚本会检查所有硬件是否正常工作
 # 使用方法：bash raspberry_pi_test.sh
 # ============================================================================
@@ -9,7 +9,7 @@
 set -e
 
 echo "=========================================="
-echo "小羊养老硬件诊断工具"
+echo "声音AI＋疾病与风险预测硬件诊断工具"
 echo "=========================================="
 echo ""
 
@@ -152,7 +152,7 @@ echo ""
 print_info "测试6: 检查配置文件"
 echo "================================"
 
-CONFIG_FILE="$HOME/xiaoyanglaoyao/config/config.yaml"
+CONFIG_FILE="$HOME/sound_ai_risk/config/config.yaml"
 if [ -f "$CONFIG_FILE" ]; then
     print_pass "配置文件存在: $CONFIG_FILE"
     
@@ -178,7 +178,7 @@ echo ""
 print_info "测试7: 检查YAMNet模型"
 echo "================================"
 
-MODEL_PATH="$HOME/xiaoyanglaoyao/models/yamnet.tflite"
+MODEL_PATH="$HOME/sound_ai_risk/models/yamnet.tflite"
 if [ -f "$MODEL_PATH" ]; then
     MODEL_SIZE=$(du -h "$MODEL_PATH" | awk '{print $1}')
     print_pass "YAMNet模型存在: $MODEL_SIZE"
@@ -193,7 +193,7 @@ echo ""
 print_info "测试8: 检查日志目录"
 echo "================================"
 
-LOG_DIR="$HOME/xiaoyanglaoyao/logs"
+LOG_DIR="$HOME/sound_ai_risk/logs"
 if [ -d "$LOG_DIR" ]; then
     print_pass "日志目录存在: $LOG_DIR"
     
@@ -212,11 +212,11 @@ echo ""
 print_info "测试9: 检查systemd服务"
 echo "================================"
 
-if systemctl list-unit-files | grep -q "xiaoyanglaoyao.service"; then
+if systemctl list-unit-files | grep -q "sound_ai_risk.service"; then
     print_pass "systemd服务已注册"
     
     # 检查服务状态
-    SERVICE_STATUS=$(systemctl is-active xiaoyanglaoyao.service 2>/dev/null || echo "inactive")
+    SERVICE_STATUS=$(systemctl is-active sound_ai_risk.service 2>/dev/null || echo "inactive")
     if [ "$SERVICE_STATUS" = "active" ]; then
         print_pass "服务正在运行"
     else
@@ -303,7 +303,7 @@ fi
 echo ""
 echo "建议的后续步骤："
 echo "1. 修复任何失败的测试"
-echo "2. 编辑配置文件: nano ~/xiaoyanglaoyao/config/config.yaml"
-echo "3. 启动服务: sudo systemctl start xiaoyanglaoyao.service"
-echo "4. 查看日志: sudo journalctl -u xiaoyanglaoyao.service -f"
+echo "2. 编辑配置文件: nano ~/sound_ai_risk/config/config.yaml"
+echo "3. 启动服务: sudo systemctl start sound_ai_risk.service"
+echo "4. 查看日志: sudo journalctl -u sound_ai_risk.service -f"
 echo ""

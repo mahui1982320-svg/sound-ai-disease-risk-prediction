@@ -70,8 +70,8 @@ sudo apt-get install -y libharfbuzz0b libwebp6 libtiff5 libjasper1 libatlas-base
 
 ```bash
 # 1. 创建项目目录
-mkdir -p ~/xiaoyanglaoyao
-cd ~/xiaoyanglaoyao
+mkdir -p ~/sound_ai_risk
+cd ~/sound_ai_risk
 
 # 2. 创建虚拟环境
 python3 -m venv venv
@@ -92,7 +92,7 @@ pip install sounddevice soundfile
 # 从云端系统下载 config.yaml
 
 # 2. 编辑配置文件
-nano ~/xiaoyanglaoyao/config.yaml
+nano ~/sound_ai_risk/config.yaml
 
 # 3. 设置以下信息：
 # - device_id: 树莓派的唯一标识
@@ -106,7 +106,7 @@ nano ~/xiaoyanglaoyao/config.yaml
 
 ```bash
 # 1. 启动YAMNet推理程序
-cd ~/xiaoyanglaoyao
+cd ~/sound_ai_risk
 source venv/bin/activate
 python3 raspberry_pi_yamnet.py --config config.yaml &
 
@@ -114,7 +114,7 @@ python3 raspberry_pi_yamnet.py --config config.yaml &
 python3 raspberry_pi_uploader.py --config config.yaml &
 
 # 3. 查看日志
-tail -f ~/xiaoyanglaoyao/logs/uploader.log
+tail -f ~/sound_ai_risk/logs/uploader.log
 ```
 
 ### 第5步：验证集成
@@ -275,10 +275,10 @@ df -h
 **解决方案**：
 ```bash
 # 1. 检查本地缓存
-ls -lh ~/xiaoyanglaoyao/cache/
+ls -lh ~/sound_ai_risk/cache/
 
 # 2. 查看上传日志
-tail -100 ~/xiaoyanglaoyao/logs/uploader.log | grep -E "ERROR|FAILED"
+tail -100 ~/sound_ai_risk/logs/uploader.log | grep -E "ERROR|FAILED"
 
 # 3. 手动重试上传
 python3 raspberry_pi_uploader.py --retry-cache
@@ -394,8 +394,8 @@ def monitor_system_health():
 
 如有问题，请查看以下资源：
 
-- 日志文件：`~/xiaoyanglaoyao/logs/`
-- 配置文件：`~/xiaoyanglaoyao/config.yaml`
+- 日志文件：`~/sound_ai_risk/logs/`
+- 配置文件：`~/sound_ai_risk/config.yaml`
 - 测试脚本：`verify_yamnet_installation.sh`
 - 云端API文档：`/api/docs`
 
